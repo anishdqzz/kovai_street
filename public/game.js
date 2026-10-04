@@ -1,4 +1,4 @@
-import { createCityWorld } from './city-world.js?v=22';
+import { createCityWorld } from './city-world.js?v=23';
 import { CITY_ORIGIN, PLAYER_START } from './map-config.js';
 
 const authScreen = document.querySelector('#auth-screen');
@@ -30,6 +30,8 @@ const rejectPlayerButton = document.querySelector('#reject-player');
 const voiceControls = document.querySelector('#voice-controls');
 const voiceStatus = document.querySelector('#voice-status');
 const voiceAudio = document.querySelector('#voice-audio');
+const dayCycleButton = document.querySelector('#day-cycle');
+const rainToggleButton = document.querySelector('#rain-toggle');
 const passengerControls = document.querySelector('#passenger-controls');
 const passengerLabel = document.querySelector('#passenger-label');
 const cityWorld = { current: null };
@@ -51,6 +53,16 @@ let isPassenger = false;
 let rideDriverId = null;
 let voiceInviteTimer = null;
 let voiceInviteTargetId = null;
+const dayPresets = [
+  { id: 'auto', label: 'தானியங்கு', hour: null },
+  { id: 'morning', label: 'காலை', hour: 8 },
+  { id: 'noon', label: 'நண்பகல்', hour: 12 },
+  { id: 'evening', label: 'மாலை', hour: 17.5 },
+  { id: 'night', label: 'இரவு', hour: 21 }
+];
+const savedDayPreset = localStorage.getItem('kovai-day-preset');
+let dayPresetIndex = Math.max(0, dayPresets.findIndex(preset => preset.id === savedDayPreset));
+let isRaining = localStorage.getItem('kovai-rain-mode') === 'true';
 
 const places = [
   { name: 'Gandhipuram Bus Stand', type: 'TRANSIT', lat: 11.0162570, lon: 76.9693485 },
@@ -849,6 +861,7 @@ async function enterGame(user) {
       onStatus: message => { tileStatus.textContent = message; },
       onMode: updateTravelMode
     });
+    updateClock();
     updateTravelMode(false, 0);
     canvas.focus({ preventScroll: true });
     connectMultiplayer();
@@ -1054,12 +1067,36 @@ async function checkSession() {
 }
 
 function updateClock() {
+  const now = new Date();
+  const timeZone = 'Asia/Kolkata';
   document.querySelector('#city-time').textContent = new Intl.DateTimeFormat('en-IN', {
-    timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false
-  }).format(new Date());
+    timeZone, hour: '2-digit', minute: '2-digit', hour12: false
+  }).format(now);
+  const timeParts = new Intl.DateTimeFormat('en-IN', {
+    timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+  }).formatToParts(now);
+  const hour = Number(timeParts.find(part => part.type === 'hour')?.value);
+  const minute = Number(timeParts.find(part => part.type === 'minute')?.value);
+  const preset = dayPresets[dayPresetIndex];
+  cityWorld.current?.setEnvironment(preset.hour ?? hour + minute / 60, isRaining);
+  dayCycleButton.textContent = `நேரம் · ${preset.label}`;
+  dayCycleButton.setAttribute('aria-label', `நேர அமைப்பு: ${preset.label}. மாற்ற அழுத்தவும்`);
+  rainToggleButton.textContent = isRaining ? 'மழை · ஆம்' : 'மழை · இல்லை';
+  rainToggleButton.setAttribute('aria-pressed', String(isRaining));
+  rainToggleButton.setAttribute('aria-label', isRaining ? 'மழையை நிறுத்து' : 'மழையை இயக்கு');
 }
 
 showAuthView('signin');
 updateClock();
 setInterval(updateClock, 30_000);
+dayCycleButton.addEventListener('click', () => {
+  dayPresetIndex = (dayPresetIndex + 1) % dayPresets.length;
+  localStorage.setItem('kovai-day-preset', dayPresets[dayPresetIndex].id);
+  updateClock();
+});
+rainToggleButton.addEventListener('click', () => {
+  isRaining = !isRaining;
+  localStorage.setItem('kovai-rain-mode', String(isRaining));
+  updateClock();
+});
 checkSession();

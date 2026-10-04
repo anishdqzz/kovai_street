@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@1,600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700;800&family=Noto+Sans+Tamil:wght@400;500;600;700&family=Playfair+Display:ital,wght@1,600&display=swap');
 
 :root {
   color-scheme: dark;
@@ -6,7 +6,7 @@
   --muted: #838b7f;
   --lime: #d4f36a;
   --line: rgba(225, 234, 211, .11);
-  font-family: "DM Sans", sans-serif;
+  font-family: "DM Sans", "Noto Sans Tamil", sans-serif;
   background: #101510;
   color: var(--ink);
   font-synthesis: none;
@@ -72,6 +72,9 @@ button { color: inherit; }
 .game-location small { color: #7c8579; font-size: 8px; margin-top: 4px; }
 .game-location .live-dot { width: 6px; height: 6px; }
 .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 24px; }
+.climate-controls { display: flex; align-items: center; gap: 6px; }
+.climate-button { min-height: 32px; padding: 0 9px; border: 1px solid #394337; border-radius: 3px; color: #d7e2c9; background: #172019; font: 9px "Noto Sans Tamil", "DM Sans", sans-serif; cursor: pointer; white-space: nowrap; }
+.climate-button:hover, .climate-button[aria-pressed="true"] { border-color: #a9c866; color: var(--lime); }
 .player-name { color: #aeb6a9; font-size: 12px; }
 .signout-button { border: 1px solid #394337; border-radius: 3px; background: transparent; padding: 9px 12px; font-size: 9px; cursor: pointer; }
 .signout-button span { color: var(--lime); margin-left: 8px; }
@@ -209,10 +212,13 @@ button { color: inherit; }
 @media (max-width: 580px) {
   .game-screen { height: 100dvh; }
   .game-topbar { height: 57px; flex-basis: 57px; padding: 0 14px; }
-  .game-brand { font-size: 23px; margin-right: 14px; }
-  .game-location { padding-left: 14px; }
+  .game-brand { font-size: 23px; margin-right: 8px; }
+  .game-location { padding-left: 8px; }
   .game-location strong { font-size: 9px; }
   .player-name { display: none; }
+  .topbar-right { gap: 6px; }
+  .climate-controls { gap: 3px; }
+  .climate-button { min-height: 30px; padding: 0 3px; font-size: 7px; }
   .signout-button { font-size: 8px; padding: 8px; }
   .game-layout { display: flex; flex-direction: column-reverse; }
   .map-shell { flex: 1; min-height: 0; }

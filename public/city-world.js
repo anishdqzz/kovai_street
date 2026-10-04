@@ -88,6 +88,8 @@ class CityWorld {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x9aa799);
     this.scene.fog = new THREE.Fog(0xa9b3a0, 170, 950);
+    this.environmentHour = 12;
+    this.raining = false;
     this.renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: true,
@@ -115,6 +117,10 @@ class CityWorld {
     this.sun.shadow.normalBias = .04;
     this.scene.add(this.sun);
     this.scene.add(this.sun.target);
+    this.hemi = this.scene.children.find(object => object.isHemisphereLight);
+    this.environmentTargets = null;
+    this.createRain();
+    this.setEnvironment(12, false);
 
     this.ground = new THREE.Mesh(
       new THREE.PlaneGeometry(200000, 200000),
@@ -178,6 +184,113 @@ class CityWorld {
       lat: MAP_START.lat - z / 111320,
       lon: MAP_START.lon + x / (111320 * Math.cos(MAP_START.lat * Math.PI / 180))
     };
+  }
+
+  createRain() {
+    const positions = new Float32Array(600 * 6);
+    this.rainSpeeds = new Float32Array(600);
+    for (let index = 0; index < 600; index++) {
+      const offset = index * 6;
+      const x = (Math.random() - .5) * 62;
+      const y = Math.random() * 38 - 8;
+      const z = (Math.random() - .5) * 62;
+      positions.set([x, y, z, x - .12, y - 1.5, z - .08], offset);
+      this.rainSpeeds[index] = 24 + Math.random() * 18;
+    }
+    this.rainGeometry = new THREE.BufferGeometry();
+    this.rainGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    this.rainMaterial = new THREE.LineBasicMaterial({
+      color: 0xb9d9ed,
+      transparent: true,
+      opacity: .52,
+      depthWrite: false
+    });
+    this.rain = new THREE.LineSegments(this.rainGeometry, this.rainMaterial);
+    this.rain.visible = false;
+    this.scene.add(this.rain);
+  }
+
+  setEnvironment(hour, raining = this.raining) {
+    this.environmentHour = ((hour % 24) + 24) % 24;
+    this.raining = raining;
+    const stops = [
+      { hour: 0, sky: 0x10182a, ground: 0x171c21, fog: 0x18202b, sun: 0x8198c4, hemi: .45, daylight: 0, exposure: .66 },
+      { hour: 5, sky: 0x392f4b, ground: 0x39333c, fog: 0x574b55, sun: 0xef986c, hemi: .75, daylight: .18, exposure: .8 },
+      { hour: 7, sky: 0xa6b9b6, ground: 0x666d5b, fog: 0xaab9b1, sun: 0xffc080, hemi: 1.65, daylight: .68, exposure: .98 },
+      { hour: 12, sky: 0xc1d0d2, ground: 0x68735f, fog: 0xb5bfb2, sun: 0xffe7bd, hemi: 2.15, daylight: 1, exposure: 1.08 },
+      { hour: 16.5, sky: 0xc8a998, ground: 0x61584c, fog: 0xb99a82, sun: 0xffa45f, hemi: 1.65, daylight: .78, exposure: 1.02 },
+      { hour: 18.5, sky: 0x55536d, ground: 0x383944, fog: 0x666078, sun: 0xf18569, hemi: .95, daylight: .32, exposure: .84 },
+      { hour: 20, sky: 0x172238, ground: 0x202833, fog: 0x222e3c, sun: 0x9bb6e5, hemi: .55, daylight: .08, exposure: .7 },
+      { hour: 24, sky: 0x10182a, ground: 0x171c21, fog: 0x18202b, sun: 0x8198c4, hemi: .45, daylight: 0, exposure: .66 }
+    ];
+    let start = stops[0];
+    let end = stops[1];
+    for (let index = 1; index < stops.length; index++) {
+      if (this.environmentHour <= stops[index].hour) {
+        start = stops[index - 1];
+        end = stops[index];
+        break;
+      }
+    }
+    const amount = (this.environmentHour - start.hour) / (end.hour - start.hour);
+    const mixColor = (from, to) => new THREE.Color(from).lerp(new THREE.Color(to), amount);
+    const mixNumber = (key) => THREE.MathUtils.lerp(start[key], end[key], amount);
+    const rainDimmer = raining ? .78 : 1;
+    this.environmentTargets = {
+      sky: mixColor(start.sky, end.sky),
+      ground: mixColor(start.ground, end.ground),
+      fog: mixColor(start.fog, end.fog),
+      sun: mixColor(start.sun, end.sun),
+      hemi: mixNumber('hemi') * rainDimmer,
+      daylight: mixNumber('daylight') * rainDimmer,
+      exposure: mixNumber('exposure') * (raining ? .9 : 1),
+      lampGlow: .08 + (1 - mixNumber('daylight')) * 2.1,
+      fogNear: raining ? 95 : 170,
+      fogFar: raining ? 660 : 950
+    };
+    this.rain.visible = raining;
+  }
+
+  updateEnvironment(deltaTime) {
+    if (!this.environmentTargets) return;
+    const blend = 1 - Math.exp(-1.4 * deltaTime);
+    const target = this.environmentTargets;
+    this.scene.background.lerp(target.sky, blend);
+    this.scene.fog.color.lerp(target.fog, blend);
+    this.scene.fog.near = THREE.MathUtils.lerp(this.scene.fog.near, target.fogNear, blend);
+    this.scene.fog.far = THREE.MathUtils.lerp(this.scene.fog.far, target.fogFar, blend);
+    this.hemi.color.lerp(target.sky, blend);
+    this.hemi.groundColor.lerp(target.ground, blend);
+    this.hemi.intensity = THREE.MathUtils.lerp(this.hemi.intensity, target.hemi, blend);
+    this.sun.color.lerp(target.sun, blend);
+    this.sun.intensity = THREE.MathUtils.lerp(this.sun.intensity, 3.1 * target.daylight, blend);
+    if (this.lampGlowMaterial) {
+      this.lampGlowMaterial.emissiveIntensity = THREE.MathUtils.lerp(
+        this.lampGlowMaterial.emissiveIntensity,
+        target.lampGlow,
+        blend
+      );
+    }
+    this.renderer.toneMappingExposure = THREE.MathUtils.lerp(this.renderer.toneMappingExposure, target.exposure, blend);
+    if (this.raining) {
+      const coordinates = this.rainGeometry.attributes.position;
+      const values = coordinates.array;
+      const targetPosition = this.vehicle ? this.car.position : this.player.position;
+      this.rain.position.set(targetPosition.x, targetPosition.y, targetPosition.z);
+      for (let index = 0; index < this.rainSpeeds.length; index++) {
+        const offset = index * 6;
+        values[offset + 1] -= this.rainSpeeds[index] * deltaTime;
+        values[offset + 4] = values[offset + 1] - 1.5;
+        if (values[offset + 1] < -8) {
+          values[offset] = (Math.random() - .5) * 62;
+          values[offset + 1] = 20 + Math.random() * 20;
+          values[offset + 2] = (Math.random() - .5) * 62;
+          values[offset + 3] = values[offset] - .12;
+          values[offset + 5] = values[offset + 2] - .08;
+        }
+      }
+      coordinates.needsUpdate = true;
+    }
   }
 
   startAudio() {
@@ -589,6 +702,7 @@ class CityWorld {
     this.lampPosts = [];
     const lampMaterial = new THREE.MeshStandardMaterial({ color: 0x39453c, roughness: .76, metalness: .26 });
     const lampGlow = new THREE.MeshStandardMaterial({ color: 0xffd887, emissive: 0xffb64e, emissiveIntensity: 1.1 });
+    this.lampGlowMaterial = lampGlow;
     for (const side of [-1, 1]) {
       for (const z of [-94, -34, 30, 94]) {
         const lamp = new THREE.Group();
@@ -2163,6 +2277,7 @@ class CityWorld {
     this.updateMovement(deltaTime);
     this.updateStreetLife(deltaTime, now);
     this.updateCamera(deltaTime);
+    this.updateEnvironment(deltaTime);
     this.renderer.render(this.scene, this.camera);
     this.raf = requestAnimationFrame(this.animate);
   };

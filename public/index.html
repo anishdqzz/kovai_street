@@ -7,9 +7,9 @@
     <meta name="description" content="Explore a third-person open-world game through the streets and landmarks of Coimbatore.">
     <title>Kovai Streets — Coimbatore, your way</title>
     <link rel="preconnect" href="https://tile.openstreetmap.org">
-    <link rel="stylesheet" href="/styles.css?v=13">
+    <link rel="stylesheet" href="/styles.css?v=14">
     <script src="/socket.io/socket.io.js" defer></script>
-    <script type="module" src="/game.js?v=32"></script>
+    <script type="module" src="/game.js?v=33"></script>
   </head>
   <body>
     <main id="auth-screen" class="auth-screen">
@@ -43,7 +43,7 @@
       <header class="game-topbar">
         <a class="game-brand" href="/" aria-label="Kovai Streets home">K<span>.</span></a>
         <div class="game-location"><span class="live-dot"></span><div><strong>COIMBATORE</strong><small>TAMIL NADU, INDIA</small></div></div>
-        <div class="topbar-right"><span id="player-name" class="player-name"></span><button id="signout-button" class="signout-button">SIGN OUT <span>↗</span></button></div>
+        <div class="topbar-right"><div class="climate-controls"><button id="day-cycle" class="climate-button" type="button" lang="ta" aria-label="நேர அமைப்பை மாற்று">நேரம் · தானியங்கு</button><button id="rain-toggle" class="climate-button" type="button" lang="ta" aria-label="மழையை இயக்கு" aria-pressed="false">மழை · இல்லை</button></div><span id="player-name" class="player-name"></span><button id="signout-button" class="signout-button">SIGN OUT <span>↗</span></button></div>
       </header>
 
       <section class="game-layout">
