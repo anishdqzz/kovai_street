@@ -1,4 +1,5 @@
-import { createCityWorld } from './city-world.js?v=21';
+import { createCityWorld } from './city-world.js?v=22';
+import { CITY_ORIGIN, PLAYER_START } from './map-config.js';
 
 const authScreen = document.querySelector('#auth-screen');
 const gameScreen = document.querySelector('#game-screen');
@@ -32,7 +33,7 @@ const voiceAudio = document.querySelector('#voice-audio');
 const passengerControls = document.querySelector('#passenger-controls');
 const passengerLabel = document.querySelector('#passenger-label');
 const cityWorld = { current: null };
-const camera = { lat: 11.0168, lon: 76.9558 };
+const camera = { ...PLAYER_START };
 const otherPlayers = new Map();
 let miniMapUpdatedAt = 0;
 let playerHeading = 0;
@@ -102,7 +103,8 @@ const places = [
   { name: 'Coimbatore North Railway Station', type: 'RAILWAY', lat: 11.0150, lon: 76.9592 },
   { name: 'Ukkadam Fish Market', type: 'MARKET', lat: 10.9890, lon: 76.9590 },
   { name: 'Town Hall Market', type: 'MARKET', lat: 10.9940, lon: 76.9610 },
-  { name: 'Race Course Walking Track', type: 'PARK', lat: 11.0059, lon: 76.9745 }
+  { name: 'Race Course Walking Track', type: 'PARK', lat: 11.0059, lon: 76.9745 },
+  { name: 'Coimbatore Mani Koondu', type: 'LANDMARK', lat: CITY_ORIGIN.lat, lon: CITY_ORIGIN.lon }
 ];
 
 let destination = null;
@@ -419,12 +421,12 @@ function drawMiniMap(position = camera, motion = {}) {
   context.fillRect(0, 0, width, height);
   context.save();
   context.beginPath();
-  context.roundRect(2, 2, width - 4, height - 4, 17);
+  context.arc(centerX, centerY, radius, 0, Math.PI * 2);
   context.clip();
   context.fillStyle = '#25352e';
   context.fillRect(0, 0, width, height);
-  const playerX = (position.lon - 76.9558) * 111320 * Math.cos(11.0168 * Math.PI / 180);
-  const playerZ = (11.0168 - position.lat) * 111320;
+  const playerX = (position.lon - CITY_ORIGIN.lon) * 111320 * Math.cos(CITY_ORIGIN.lat * Math.PI / 180);
+  const playerZ = (CITY_ORIGIN.lat - position.lat) * 111320;
   const toScreen = point => {
     const dx = (point.lon - position.lon) * 111320 * Math.cos(position.lat * Math.PI / 180);
     const dz = (position.lat - point.lat) * 111320;
@@ -433,8 +435,8 @@ function drawMiniMap(position = camera, motion = {}) {
     return { x: centerX + right * metersToPixels, y: centerY - forward * metersToPixels, right, forward };
   };
   const worldToGeo = (x, z) => ({
-    lat: 11.0168 - z / 111320,
-    lon: 76.9558 + x / (111320 * Math.cos(11.0168 * Math.PI / 180))
+    lat: CITY_ORIGIN.lat - z / 111320,
+    lon: CITY_ORIGIN.lon + x / (111320 * Math.cos(CITY_ORIGIN.lat * Math.PI / 180))
   });
   const roadSpacing = 108;
   const roadStartX = Math.floor(playerX / roadSpacing);
@@ -507,17 +509,17 @@ function drawMiniMap(position = camera, motion = {}) {
     targetOnScreen = {
       ...targetOnScreen,
       distance,
-      clipped: targetOnScreen.x < 12 || targetOnScreen.x > width - 12 || targetOnScreen.y < 12 || targetOnScreen.y > height - 12
+      clipped: Math.hypot(targetOnScreen.x - centerX, targetOnScreen.y - centerY) > radius - 12
     };
     if (targetOnScreen.clipped) {
       const dx = targetOnScreen.x - centerX;
       const dy = targetOnScreen.y - centerY;
-      const edgeScale = Math.min((centerX - 14) / Math.max(1, Math.abs(dx)), (centerY - 14) / Math.max(1, Math.abs(dy)));
+      const edgeScale = (radius - 14) / Math.max(1, Math.hypot(dx, dy));
       targetOnScreen.edgeX = centerX + dx * edgeScale;
       targetOnScreen.edgeY = centerY + dy * edgeScale;
     }
-    const destinationX = (destination.lon - 76.9558) * 111320 * Math.cos(11.0168 * Math.PI / 180);
-    const destinationZ = (11.0168 - destination.lat) * 111320;
+    const destinationX = (destination.lon - CITY_ORIGIN.lon) * 111320 * Math.cos(CITY_ORIGIN.lat * Math.PI / 180);
+    const destinationZ = (CITY_ORIGIN.lat - destination.lat) * 111320;
     const spacing = 108;
     const startX = Math.round(playerX / spacing) * spacing;
     const startZ = Math.round(playerZ / spacing) * spacing;

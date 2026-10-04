@@ -1,11 +1,12 @@
 import * as THREE from '/vendor/three/three.module.js';
+import { CITY_ORIGIN, PLAYER_START } from './map-config.js';
 
 const TILE_ZOOM = 17;
 const TILE_PIXELS = 256;
 const VIEW_TILES = 3;
 const MAX_TILE_TEXTURES = 45;
 const ROAD_SPACING = 108;
-const MAP_START = { lat: 11.0168, lon: 76.9558 };
+const MAP_START = CITY_ORIGIN;
 
 function project(lat, lon) {
   const scale = TILE_PIXELS * 2 ** TILE_ZOOM;
@@ -79,10 +80,10 @@ class CityWorld {
     this.cameraDistance = 10;
     this.jumpVelocity = 0;
     this.playerHeight = 0;
-    this.position = { lat: MAP_START.lat, lon: MAP_START.lon };
+    this.position = { ...PLAYER_START };
     this.projectedStart = project(MAP_START.lat, MAP_START.lon);
     this.metersPerPixel = 156543.03392 * Math.cos(MAP_START.lat * Math.PI / 180) / (2 ** TILE_ZOOM);
-    this.worldPosition = { x: 0, z: 4 };
+    this.worldPosition = this.localPosition(PLAYER_START.lat, PLAYER_START.lon);
     this.position = this.geoPosition(this.worldPosition.x, this.worldPosition.z);
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x9aa799);
@@ -398,7 +399,7 @@ class CityWorld {
       }
     }
     this.scene.add(this.car);
-    const carPosition = this.localPosition(11.01677, 76.95582);
+    const carPosition = this.localPosition(PLAYER_START.lat, PLAYER_START.lon);
     this.car.position.set(carPosition.x, 0, carPosition.z);
     this.car.rotation.y = 0;
     this.parkedCarPosition = { ...this.car.position };
@@ -1624,7 +1625,58 @@ class CityWorld {
       return mesh;
     };
     let signHeight = 7;
-    if (place.type === 'TEMPLE') {
+    if (place.name === 'Coimbatore Mani Koondu') {
+      const clockMaterial = new THREE.MeshStandardMaterial({ color: 0xf2e7cb, roughness: .72 });
+      const handMaterial = new THREE.MeshStandardMaterial({ color: 0x29291f, roughness: .65 });
+      addBox(18, .6, 18, 0, .3, 0, roofMaterial);
+      addBox(11, 15, 11, 0, 8, 0);
+      addBox(15, 2, 15, 0, 16.5, 0, roofMaterial);
+      addBox(8, 3, 8, 0, 19, 0);
+      const clockFace = new THREE.Mesh(new THREE.CylinderGeometry(2.8, 2.8, .3, 32), clockMaterial);
+      clockFace.rotation.x = Math.PI / 2;
+      clockFace.position.set(0, 19, -4.2);
+      building.add(clockFace);
+      const minuteHand = addBox(.16, 1.8, .18, 0, 19.8, -4.42, handMaterial);
+      minuteHand.rotation.z = -.25;
+      const hourHand = addBox(1.3, .16, .18, -.45, 19, -4.43, handMaterial);
+      hourHand.rotation.z = -.35;
+      const cap = new THREE.Mesh(new THREE.ConeGeometry(6, 7, 4), roofMaterial);
+      cap.position.set(0, 24, 0);
+      cap.rotation.y = Math.PI / 4;
+      building.add(cap);
+      signHeight = 32;
+    } else if (place.name === 'Isha Yoga Center') {
+      const statueMaterial = new THREE.MeshStandardMaterial({ color: 0x222827, roughness: .42, metalness: .18 });
+      const goldMaterial = new THREE.MeshStandardMaterial({ color: 0xd3ad58, roughness: .6, metalness: .15 });
+      addBox(38, .8, 34, 0, .4, 0, roofMaterial);
+      addBox(25, 1.2, 21, 0, 1.4, 1, goldMaterial);
+      addBox(19, 8, 16, 0, 5.8, 2, wallMaterial);
+      const dome = new THREE.Mesh(new THREE.SphereGeometry(10, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), roofMaterial);
+      dome.position.set(0, 10, 1);
+      building.add(dome);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(7.4, 24, 18), statueMaterial);
+      head.position.set(0, 15, -13);
+      head.scale.set(1.12, 1.15, .83);
+      building.add(head);
+      const forehead = new THREE.Mesh(new THREE.SphereGeometry(4.6, 20, 14), statueMaterial);
+      forehead.position.set(0, 11.4, -12.7);
+      forehead.scale.set(1.2, .7, .78);
+      building.add(forehead);
+      for (let curl = 0; curl < 7; curl++) {
+        const angle = Math.PI * (curl + 1) / 8;
+        const knot = new THREE.Mesh(new THREE.SphereGeometry(1.05, 10, 8), statueMaterial);
+        knot.position.set(Math.cos(angle) * 5.1, 19.2 + Math.sin(angle) * 1.2, -12.8);
+        building.add(knot);
+      }
+      const eyeMaterial = new THREE.MeshStandardMaterial({ color: 0xb9a477, roughness: .5 });
+      for (const side of [-1, 1]) {
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(.34, 8, 6), eyeMaterial);
+        eye.position.set(side * 1.6, 15.3, -18.7);
+        building.add(eye);
+      }
+      addBox(1.2, 3.2, .7, 0, 13.4, -18.2, statueMaterial);
+      signHeight = 26;
+    } else if (place.type === 'TEMPLE') {
       addBox(18, .5, 16, 0, .25, 1);
       addBox(13, 5, 12, 0, 2.8, 3);
       addBox(15, .8, 3, 0, 5.4, -4.5, roofMaterial);
@@ -1759,8 +1811,8 @@ class CityWorld {
         { minX: position.x - 190, maxX: position.x - 160, minZ: position.z + 105, maxZ: position.z + 145 }
       ];
     } else if (!['NATURE', 'PARK', 'BRIDGE'].includes(place.type)) {
-      const width = place.type === 'TEMPLE' ? 18 : 24;
-      const depth = place.type === 'TEMPLE' ? 18 : 20;
+      const width = place.type === 'TEMPLE' ? 18 : place.name === 'Coimbatore Mani Koondu' ? 18 : 24;
+      const depth = place.type === 'TEMPLE' ? 18 : place.name === 'Coimbatore Mani Koondu' ? 18 : 20;
       building.userData.collisionBoxes = [
         { minX: position.x - width / 2, maxX: position.x + width / 2, minZ: position.z - depth / 2, maxZ: position.z + depth / 2 }
       ];
@@ -1903,7 +1955,7 @@ class CityWorld {
     this.vehicle = false;
     this.player.visible = true;
     this.car.position.copy(this.parkedCarPosition);
-    this.setPosition(this.geoPosition(0, 4));
+    this.setPosition(PLAYER_START);
   }
 
   toggleVehicle() {

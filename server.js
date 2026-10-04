@@ -14,6 +14,7 @@ import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 import nodemailer from 'nodemailer';
 import { Server } from 'socket.io';
+import { PLAYER_START } from './public/map-config.js';
 
 const app = express();
 const server = createServer(app);
@@ -412,8 +413,8 @@ io.on('connection', socket => {
   const player = {
     id: socket.id,
     name: socket.data.playerName,
-    lat: 11.0168,
-    lon: 76.9558,
+    lat: PLAYER_START.lat,
+    lon: PLAYER_START.lon,
     heading: 0,
     vehicle: false,
     speed: 0,
@@ -615,8 +616,8 @@ io.on('connection', socket => {
   });
 
   socket.on('player:return-to-start', () => {
-    player.lat = 11.0168;
-    player.lon = 76.9558;
+    player.lat = PLAYER_START.lat;
+    player.lon = PLAYER_START.lon;
     player.heading = 0;
     player.vehicle = false;
     player.speed = 0;

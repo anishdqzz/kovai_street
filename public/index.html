@@ -7,9 +7,9 @@
     <meta name="description" content="Explore a third-person open-world game through the streets and landmarks of Coimbatore.">
     <title>Kovai Streets — Coimbatore, your way</title>
     <link rel="preconnect" href="https://tile.openstreetmap.org">
-    <link rel="stylesheet" href="/styles.css?v=12">
+    <link rel="stylesheet" href="/styles.css?v=13">
     <script src="/socket.io/socket.io.js" defer></script>
-    <script type="module" src="/game.js?v=30"></script>
+    <script type="module" src="/game.js?v=32"></script>
   </head>
   <body>
     <main id="auth-screen" class="auth-screen">
@@ -60,8 +60,8 @@
         <section class="map-shell" aria-label="Third-person Coimbatore open-world game">
           <canvas id="game-map" tabindex="0" aria-label="Third-person Coimbatore city game. Drive or walk with W A S D, arrow keys, or the on-screen controls."></canvas>
           <div class="map-wash"></div>
-          <div class="map-top-left"><span class="map-live"><i></i> LIVE MAP</span><span class="map-coords" id="map-coords">11.0168° N · 76.9558° E</span></div>
-          <div class="map-tools"><button id="zoom-in" aria-label="Zoom in">+</button><button id="zoom-out" aria-label="Zoom out">−</button><button id="recenter" aria-label="Return to Gandhipuram">⌖</button></div>
+          <div class="map-top-left"><span class="map-live"><i></i> LIVE MAP</span><span class="map-coords" id="map-coords">10.99403° N · 76.96294° E</span></div>
+          <div class="map-tools"><button id="zoom-in" aria-label="Zoom in">+</button><button id="zoom-out" aria-label="Zoom out">−</button><button id="recenter" aria-label="Return to Coimbatore Mani Koondu">⌖</button></div>
           <div id="destination-card" class="destination-card" hidden><span>YOUR NEXT STOP</span><strong id="destination-name"></strong><small id="destination-distance"></small><button id="clear-destination" aria-label="Clear destination">×</button></div>
           <section id="player-actions" class="player-actions" hidden aria-live="polite">
             <strong id="nearby-player-name"></strong>
@@ -95,13 +95,13 @@
           <div class="map-bottom-right">
             <div class="mini-map-card">
               <div class="mini-map-title"><span id="mini-map-place">CITY NAVIGATION</span><span class="mini-map-actions"><span id="mini-map-online" class="mini-map-online">OFFLINE</span><button id="sound-toggle" type="button" aria-label="Mute game sound">SOUND ON</button><b id="mini-map-heading">N ↑</b></span></div>
-              <canvas id="city-minimap" width="400" height="220" aria-label="Live city navigation map showing your position, route, and nearby players"></canvas>
+              <canvas id="city-minimap" width="240" height="240" aria-label="Live round city navigation map showing your position, route, and nearby players"></canvas>
               <div class="mini-map-legend"><i></i> YOU <span class="mini-map-player-key"><b></b> PLAYERS <strong id="mini-map-player-count">0</strong></span><span id="mini-map-target-key"><b></b> ROUTE</span></div>
             </div>
             <div class="city-story-card">
               <div class="story-card-kicker"><i></i> LIFE ON THE STREET</div>
               <strong>TEA KADAI · KOVIL · TOWN BUS</strong>
-              <small>Take a walk around Gandhipuram</small>
+              <small>Start your journey at Coimbatore Mani Koondu</small>
             </div>
           </div>
         </section>
