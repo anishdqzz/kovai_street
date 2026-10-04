@@ -75,6 +75,7 @@ class CityWorld {
     this.heading = 0;
     this.speed = 0;
     this.vehicle = false;
+    this.isPassenger = false;
     this.cameraDistance = 10;
     this.jumpVelocity = 0;
     this.playerHeight = 0;
@@ -1190,6 +1191,7 @@ class CityWorld {
       const position = this.localPosition(player.lat, player.lon);
       model.position.set(position.x, this.getFlyoverHeight(position.x, position.z), position.z);
       model.rotation.y = Number.isFinite(player.heading) ? -player.heading : 0;
+      model.visible = !player.passenger;
     }
   }
 
@@ -1559,7 +1561,7 @@ class CityWorld {
       event.preventDefault();
       this.startAudio();
       this.keys.add(key);
-      if (key === 'e' && !event.repeat) this.toggleVehicle();
+      if (key === 'e' && !event.repeat && !this.isPassenger) this.toggleVehicle();
       if (key === ' ' && !event.repeat && !this.vehicle && this.playerHeight === 0) {
         this.jumpVelocity = 5.2;
         this.playAudioTone(420, .16, .035, 'sine');
@@ -1579,6 +1581,7 @@ class CityWorld {
     const model = this.makeOtherPlayer(player);
     model.position.set(position.x, this.getFlyoverHeight(position.x, position.z), position.z);
     model.rotation.y = Number.isFinite(player.heading) ? -player.heading : 0;
+    model.visible = !player.passenger;
   }
 
   setTarget(place) {
@@ -1839,6 +1842,7 @@ class CityWorld {
   }
 
   setPosition(position) {
+    this.isPassenger = false;
     this.position = { ...position };
     this.worldPosition = this.localPosition(position.lat, position.lon);
     this.player.position.x = this.worldPosition.x;
@@ -1847,6 +1851,32 @@ class CityWorld {
     this.player.rotation.y = -this.heading;
     this.updateTiles();
     this.onPosition(this.position, { heading: this.heading, vehicle: this.vehicle, speed: this.speed });
+  }
+
+  setPassengerMode(driver) {
+    if (!driver) {
+      this.isPassenger = false;
+      this.vehicle = false;
+      this.speed = 0;
+      this.player.visible = true;
+      return;
+    }
+    this.isPassenger = true;
+    this.vehicle = true;
+    this.player.visible = false;
+    this.setPassengerPosition(driver);
+  }
+
+  setPassengerPosition(driver) {
+    if (!this.isPassenger || !Number.isFinite(driver?.lat) || !Number.isFinite(driver?.lon)) return;
+    this.position = { lat: driver.lat, lon: driver.lon };
+    this.heading = Number.isFinite(driver.heading) ? driver.heading : this.heading;
+    this.speed = Number.isFinite(driver.speed) ? driver.speed : 0;
+    this.worldPosition = this.localPosition(driver.lat, driver.lon);
+    const roadHeight = this.getFlyoverHeight(this.worldPosition.x, this.worldPosition.z);
+    this.car.position.set(this.worldPosition.x, roadHeight, this.worldPosition.z);
+    this.car.rotation.y = -this.heading;
+    this.updateTiles();
   }
 
   canOccupy(x, z, radius) {
@@ -1877,6 +1907,7 @@ class CityWorld {
   }
 
   toggleVehicle() {
+    if (this.isPassenger) return;
     if (this.vehicle) {
       const exitX = this.car.position.x + Math.cos(this.heading) * 2.4;
       const exitZ = this.car.position.z + Math.sin(this.heading) * 2.4;
@@ -1908,6 +1939,7 @@ class CityWorld {
   }
 
   updateMovement(deltaTime) {
+    if (this.isPassenger) return;
     if (![this.heading, this.worldPosition.x, this.worldPosition.z, this.speed].every(Number.isFinite)) {
       console.error('Player position became invalid; restoring the last known Coimbatore location.');
       this.heading = 0;

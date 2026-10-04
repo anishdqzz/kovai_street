@@ -384,6 +384,21 @@ io.use(async (socket, next) => {
   }
 });
 
+function distanceBetweenPlayers(first, second) {
+  const radians = value => value * Math.PI / 180;
+  const dLat = radians(second.lat - first.lat);
+  const dLon = radians(second.lon - first.lon);
+  const arc = 2 * Math.asin(Math.sqrt(
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(radians(first.lat)) * Math.cos(radians(second.lat)) * Math.sin(dLon / 2) ** 2
+  ));
+  return arc * 6371000;
+}
+
+function arePlayersNearby(first, second, limit = 35) {
+  return first && second && distanceBetweenPlayers(first, second) <= limit;
+}
+
 io.on('connection', socket => {
   const player = {
     id: socket.id,
@@ -392,7 +407,9 @@ io.on('connection', socket => {
     lon: 76.9558,
     heading: 0,
     vehicle: false,
-    speed: 0
+    speed: 0,
+    passengerId: null,
+    rideDriverId: null
   };
   activePlayers.set(socket.id, player);
   socket.emit('players:snapshot', [...activePlayers.values()].filter(item => item.id !== socket.id));
@@ -421,6 +438,171 @@ io.on('connection', socket => {
     if (typeof position.vehicle === 'boolean') player.vehicle = position.vehicle;
     if (Number.isFinite(position.speed)) player.speed = Math.max(-8, Math.min(30, position.speed));
     io.emit('players:update', player);
+    if (player.passengerId) {
+      const passenger = activePlayers.get(player.passengerId);
+      if (passenger && player.vehicle) {
+        passenger.lat = player.lat;
+        passenger.lon = player.lon;
+        passenger.heading = player.heading;
+        passenger.vehicle = true;
+        passenger.passenger = true;
+        io.emit('players:update', passenger);
+      } else if (passenger) {
+        player.passengerId = null;
+        passenger.rideDriverId = null;
+        passenger.vehicle = false;
+        passenger.passenger = false;
+        io.to(passenger.id).emit('car:left');
+        io.emit('players:update', passenger);
+        io.to(socket.id).emit('car:left');
+      } else {
+        player.passengerId = null;
+      }
+    }
+    const voicePeerId = socket.data.voicePeerId;
+    const voicePeer = voicePeerId ? activePlayers.get(voicePeerId) : null;
+    if (voicePeerId && !arePlayersNearby(player, voicePeer, 50)) {
+      socket.data.voicePeerId = null;
+      const voicePeerSocket = io.sockets.sockets.get(voicePeerId);
+      if (voicePeerSocket) {
+        voicePeerSocket.data.voicePeerId = null;
+        voicePeerSocket.emit('voice:ended', { id: socket.id, name: player.name });
+      }
+      socket.emit('voice:ended', { id: voicePeerId, name: voicePeer?.name });
+    }
+  });
+
+  socket.on('voice:invite', targetId => {
+    const target = activePlayers.get(targetId);
+    const targetSocket = typeof targetId === 'string' ? io.sockets.sockets.get(targetId) : null;
+    if (typeof targetId !== 'string' || targetId === socket.id ||
+      !arePlayersNearby(player, target, 35) || socket.data.voicePeerId || targetSocket?.data.voicePeerId) {
+      socket.emit('voice:invite-failed', { message: 'That player is no longer nearby or is busy.' });
+      return;
+    }
+    socket.data.pendingVoiceId = targetId;
+    targetSocket.data.pendingVoiceId = socket.id;
+    socket.to(targetId).emit('voice:incoming', { id: socket.id, name: player.name });
+    socket.emit('voice:invite-sent', { id: targetId, name: target.name });
+  });
+
+  socket.on('voice:accept', callerId => {
+    const caller = activePlayers.get(callerId);
+    if (socket.data.pendingVoiceId !== callerId || !arePlayersNearby(player, caller, 35)) return;
+    const callerSocket = io.sockets.sockets.get(callerId);
+    if (!callerSocket || callerSocket.data.voicePeerId || socket.data.voicePeerId) return;
+    socket.data.pendingVoiceId = null;
+    callerSocket.data.pendingVoiceId = null;
+    callerSocket.data.voicePeerId = socket.id;
+    socket.data.voicePeerId = callerId;
+    io.to(callerId).emit('voice:accepted', { id: socket.id, initiator: true });
+    socket.emit('voice:accepted', { id: callerId, initiator: false });
+  });
+
+  socket.on('voice:reject', callerId => {
+    if (socket.data.pendingVoiceId !== callerId) return;
+    socket.data.pendingVoiceId = null;
+    const callerSocket = io.sockets.sockets.get(callerId);
+    if (callerSocket?.data.pendingVoiceId === socket.id) callerSocket.data.pendingVoiceId = null;
+    io.to(callerId).emit('voice:rejected', { id: socket.id, name: player.name });
+  });
+
+  socket.on('voice:cancel', targetId => {
+    if (socket.data.pendingVoiceId !== targetId) return;
+    socket.data.pendingVoiceId = null;
+    const targetSocket = io.sockets.sockets.get(targetId);
+    if (targetSocket?.data.pendingVoiceId === socket.id) targetSocket.data.pendingVoiceId = null;
+    io.to(targetId).emit('voice:cancelled', { id: socket.id });
+  });
+
+  socket.on('voice:signal', ({ targetId, signal } = {}) => {
+    const target = activePlayers.get(targetId);
+    if (socket.data.voicePeerId !== targetId || io.sockets.sockets.get(targetId)?.data.voicePeerId !== socket.id ||
+      !arePlayersNearby(player, target, 50) || !signal ||
+      !['offer', 'answer', 'candidate'].includes(signal.type)) return;
+    io.to(targetId).emit('voice:signal', { id: socket.id, signal });
+  });
+
+  socket.on('voice:end', () => {
+    socket.data.pendingVoiceId = null;
+    const peerId = socket.data.voicePeerId;
+    if (!peerId) return;
+    socket.data.voicePeerId = null;
+    const peerSocket = io.sockets.sockets.get(peerId);
+    if (peerSocket) {
+      peerSocket.data.voicePeerId = null;
+      peerSocket.emit('voice:ended', { id: socket.id });
+    }
+  });
+
+  socket.on('car:request', driverId => {
+    const driver = activePlayers.get(driverId);
+    if (typeof driverId !== 'string' || driverId === socket.id || !driver?.vehicle || driver.passenger ||
+      driver.passengerId || player.rideDriverId || !arePlayersNearby(player, driver, 18)) return;
+    const driverSocket = io.sockets.sockets.get(driverId);
+    if (!driverSocket) return;
+    driverSocket.data.pendingRideId = socket.id;
+    io.to(driverId).emit('car:ride-requested', { id: socket.id, name: player.name });
+    socket.emit('car:request-sent', { id: driverId, name: driver.name });
+  });
+
+  socket.on('car:invite', passengerId => {
+    const passenger = activePlayers.get(passengerId);
+    const passengerSocket = typeof passengerId === 'string' ? io.sockets.sockets.get(passengerId) : null;
+    if (!player.vehicle || player.passengerId || passenger?.vehicle || passenger?.rideDriverId ||
+      !arePlayersNearby(player, passenger, 18) || !passengerSocket) return;
+    passengerSocket.data.pendingRideId = socket.id;
+    io.to(passengerId).emit('car:ride-invited', { id: socket.id, name: player.name });
+  });
+
+  socket.on('car:decline', driverId => {
+    if (socket.data.pendingRideId !== driverId) return;
+    socket.data.pendingRideId = null;
+    io.to(driverId).emit('car:ride-declined', { id: socket.id, name: player.name });
+  });
+
+  socket.on('car:accept', passengerId => {
+    const passenger = activePlayers.get(passengerId);
+    const passengerSocket = typeof passengerId === 'string' ? io.sockets.sockets.get(passengerId) : null;
+    const isDriverAcceptingRequest = player.vehicle && socket.data.pendingRideId === passengerId;
+    const isPassengerAcceptingInvite = player.rideDriverId === null && socket.data.pendingRideId === passengerId &&
+      passenger?.vehicle;
+    if ((!isDriverAcceptingRequest && !isPassengerAcceptingInvite) || !passengerSocket) return;
+    const driver = isDriverAcceptingRequest ? player : passenger;
+    const rider = isDriverAcceptingRequest ? passenger : player;
+    const driverSocket = isDriverAcceptingRequest ? socket : passengerSocket;
+    const riderSocket = isDriverAcceptingRequest ? passengerSocket : socket;
+    if (driver.passengerId || rider.rideDriverId || rider.vehicle ||
+      !arePlayersNearby(driver, rider, 18)) return;
+    driverSocket.data.pendingRideId = null;
+    riderSocket.data.pendingRideId = null;
+    driver.passengerId = rider.id;
+    rider.rideDriverId = driver.id;
+    rider.lat = driver.lat;
+    rider.lon = driver.lon;
+    rider.heading = driver.heading;
+    rider.vehicle = true;
+    rider.passenger = true;
+    io.emit('players:update', driver);
+    io.emit('players:update', rider);
+    io.to(driver.id).emit('car:joined', { role: 'driver', otherId: rider.id, otherName: rider.name });
+    io.to(rider.id).emit('car:joined', { role: 'passenger', otherId: driver.id, otherName: driver.name, ...driver });
+  });
+
+  socket.on('car:leave', () => {
+    const driverId = player.rideDriverId || socket.id;
+    const driver = activePlayers.get(driverId);
+    const passengerId = player.rideDriverId ? socket.id : player.passengerId;
+    const passenger = activePlayers.get(passengerId);
+    if (driver) driver.passengerId = null;
+    if (passenger) {
+      passenger.rideDriverId = null;
+      passenger.vehicle = false;
+      passenger.passenger = false;
+      io.to(passengerId).emit('car:left');
+      io.emit('players:update', passenger);
+    }
+    if (driver) io.to(driverId).emit('car:left');
   });
 
   socket.on('player:return-to-start', () => {
@@ -434,6 +616,37 @@ io.on('connection', socket => {
   });
 
   socket.on('disconnect', () => {
+    const pendingVoiceId = socket.data.pendingVoiceId;
+    if (pendingVoiceId) {
+      const pendingVoiceSocket = io.sockets.sockets.get(pendingVoiceId);
+      if (pendingVoiceSocket?.data.pendingVoiceId === socket.id) {
+        pendingVoiceSocket.data.pendingVoiceId = null;
+        pendingVoiceSocket.emit('voice:cancelled', { id: socket.id });
+      }
+    }
+    const voicePeerId = socket.data.voicePeerId;
+    if (voicePeerId) {
+      const peerSocket = io.sockets.sockets.get(voicePeerId);
+      if (peerSocket) {
+        peerSocket.data.voicePeerId = null;
+        peerSocket.emit('voice:ended', { id: socket.id });
+      }
+    }
+    if (player.rideDriverId) {
+      const driver = activePlayers.get(player.rideDriverId);
+      if (driver) driver.passengerId = null;
+      io.to(player.rideDriverId).emit('car:left');
+    }
+    if (player.passengerId) {
+      const passenger = activePlayers.get(player.passengerId);
+      if (passenger) {
+        passenger.rideDriverId = null;
+        passenger.vehicle = false;
+        passenger.passenger = false;
+        io.to(passenger.id).emit('car:left');
+        io.emit('players:update', passenger);
+      }
+    }
     activePlayers.delete(socket.id);
     io.emit('players:left', socket.id);
   });

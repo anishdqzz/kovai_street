@@ -7,9 +7,9 @@
     <meta name="description" content="Explore a third-person open-world game through the streets and landmarks of Coimbatore.">
     <title>Kovai Streets — Coimbatore, your way</title>
     <link rel="preconnect" href="https://tile.openstreetmap.org">
-    <link rel="stylesheet" href="/styles.css?v=10">
+    <link rel="stylesheet" href="/styles.css?v=11">
     <script src="/socket.io/socket.io.js" defer></script>
-    <script type="module" src="/game.js?v=28"></script>
+    <script type="module" src="/game.js?v=29"></script>
   </head>
   <body>
     <main id="auth-screen" class="auth-screen">
@@ -63,12 +63,34 @@
           <div class="map-top-left"><span class="map-live"><i></i> LIVE MAP</span><span class="map-coords" id="map-coords">11.0168° N · 76.9558° E</span></div>
           <div class="map-tools"><button id="zoom-in" aria-label="Zoom in">+</button><button id="zoom-out" aria-label="Zoom out">−</button><button id="recenter" aria-label="Return to Gandhipuram">⌖</button></div>
           <div id="destination-card" class="destination-card" hidden><span>YOUR NEXT STOP</span><strong id="destination-name"></strong><small id="destination-distance"></small><button id="clear-destination" aria-label="Clear destination">×</button></div>
+          <section id="player-actions" class="player-actions" hidden aria-live="polite">
+            <strong id="nearby-player-name"></strong>
+            <span id="player-action-status">PLAYER NEARBY</span>
+            <div class="player-action-buttons">
+              <button id="talk-player" type="button">TALK</button>
+              <button id="ride-player" type="button" hidden>RIDE</button>
+              <button id="accept-player" type="button" hidden>ACCEPT</button>
+              <button id="reject-player" type="button" hidden>DECLINE</button>
+            </div>
+          </section>
+          <div id="voice-controls" class="voice-controls" hidden>
+            <span id="voice-status">VOICE CHAT</span>
+            <button id="voice-mic" type="button">MIC ON</button>
+            <button id="voice-speaker" type="button">SPEAKER ON</button>
+            <button id="voice-end" type="button">END</button>
+          </div>
+          <audio id="voice-audio" autoplay playsinline></audio>
+          <div id="passenger-controls" class="passenger-controls" hidden>
+            <span id="passenger-label">RIDING WITH PLAYER</span>
+            <button id="leave-car" type="button">LEAVE CAR</button>
+          </div>
           <div class="touch-pad" aria-label="Movement controls">
             <button type="button" data-move="forward" aria-label="Move forward">↑</button>
             <button type="button" data-move="left" aria-label="Turn left">←</button>
             <button type="button" data-move="backward" aria-label="Move backward">↓</button>
             <button type="button" data-move="right" aria-label="Turn right">→</button>
           </div>
+          <button id="mobile-enter-car" class="mobile-enter-car" type="button" aria-label="Enter or leave the car">CAR</button>
           <div class="map-bottom-left"><span class="map-credit">MAP DATA © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OPENSTREETMAP</a> CONTRIBUTORS</span><span id="tile-status" class="tile-status">LOADING CITY...</span></div>
           <div class="map-bottom-right">
             <div class="mini-map-card">

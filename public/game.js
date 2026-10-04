@@ -1,4 +1,4 @@
-import { createCityWorld } from './city-world.js?v=19';
+import { createCityWorld } from './city-world.js?v=20';
 
 const authScreen = document.querySelector('#auth-screen');
 const gameScreen = document.querySelector('#game-screen');
@@ -19,6 +19,18 @@ const miniMapTargetKey = document.querySelector('#mini-map-target-key');
 const miniMapPlace = document.querySelector('#mini-map-place');
 const miniMapOnline = document.querySelector('#mini-map-online');
 const miniMapPlayerCount = document.querySelector('#mini-map-player-count');
+const playerActions = document.querySelector('#player-actions');
+const nearbyPlayerName = document.querySelector('#nearby-player-name');
+const playerActionStatus = document.querySelector('#player-action-status');
+const talkPlayerButton = document.querySelector('#talk-player');
+const ridePlayerButton = document.querySelector('#ride-player');
+const acceptPlayerButton = document.querySelector('#accept-player');
+const rejectPlayerButton = document.querySelector('#reject-player');
+const voiceControls = document.querySelector('#voice-controls');
+const voiceStatus = document.querySelector('#voice-status');
+const voiceAudio = document.querySelector('#voice-audio');
+const passengerControls = document.querySelector('#passenger-controls');
+const passengerLabel = document.querySelector('#passenger-label');
 const cityWorld = { current: null };
 const camera = { lat: 11.0168, lon: 76.9558 };
 const otherPlayers = new Map();
@@ -26,6 +38,16 @@ let miniMapUpdatedAt = 0;
 let playerHeading = 0;
 let mapTiles = [];
 let playerMotion = { heading: 0, vehicle: false, speed: 0 };
+let nearbyPlayer = null;
+let pendingInteraction = null;
+let voicePeerId = null;
+let voiceConnection = null;
+let localVoiceStream = null;
+let pendingIceCandidates = [];
+let isPassenger = false;
+let rideDriverId = null;
+let voiceInviteTimer = null;
+let voiceInviteTargetId = null;
 
 const places = [
   { name: 'Gandhipuram Bus Stand', type: 'TRANSIT', lat: 11.0162570, lon: 76.9693485 },
@@ -169,6 +191,129 @@ function distanceMeters(a, b) {
     Math.sin(dLat / 2) ** 2 + Math.cos(radians(a.lat)) * Math.cos(radians(b.lat)) * Math.sin(dLon / 2) ** 2
   ));
   return 6371000 * arc;
+}
+
+function refreshPlayerActions() {
+  const now = performance.now();
+  if (now - (refreshPlayerActions.lastUpdate || 0) < 250) return;
+  refreshPlayerActions.lastUpdate = now;
+  const closest = [...otherPlayers.values()]
+    .map(player => ({ player, distance: distanceMeters(camera, player) }))
+    .filter(item => item.distance <= 25)
+    .sort((a, b) => a.distance - b.distance)[0];
+  nearbyPlayer = closest?.player || null;
+  if (!nearbyPlayer && !pendingInteraction) {
+    playerActions.hidden = true;
+    return;
+  }
+  playerActions.hidden = false;
+  if (pendingInteraction) {
+    nearbyPlayerName.textContent = pendingInteraction.name;
+    playerActionStatus.textContent = pendingInteraction.kind === 'voice'
+      ? 'WANTS TO TALK'
+      : pendingInteraction.kind === 'ride-request'
+        ? 'WANTS TO RIDE WITH YOU'
+        : 'INVITED YOU INTO THEIR CAR';
+    talkPlayerButton.hidden = true;
+    ridePlayerButton.hidden = true;
+    acceptPlayerButton.hidden = false;
+    rejectPlayerButton.hidden = false;
+    return;
+  }
+  nearbyPlayerName.textContent = nearbyPlayer.name;
+  playerActionStatus.textContent = `${Math.round(closest.distance)} M AWAY`;
+  talkPlayerButton.hidden = isPassenger || Boolean(voicePeerId);
+  ridePlayerButton.hidden = isPassenger || !(
+    (nearbyPlayer.vehicle && !nearbyPlayer.passenger) ||
+    (playerMotion.vehicle && !nearbyPlayer.vehicle)
+  );
+  ridePlayerButton.textContent = playerMotion.vehicle ? 'INVITE' : 'RIDE';
+  talkPlayerButton.textContent = `TALK TO ${nearbyPlayer.name.toUpperCase()}`;
+  acceptPlayerButton.hidden = true;
+  rejectPlayerButton.hidden = true;
+}
+
+async function acquireVoiceStream() {
+  if (localVoiceStream) return localVoiceStream;
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw new Error('Voice chat needs microphone access and a secure HTTPS connection.');
+  }
+  localVoiceStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  return localVoiceStream;
+}
+
+function closeVoiceConnection(notify = true) {
+  if (notify && socket?.connected && voicePeerId) socket.emit('voice:end');
+  voiceConnection?.close();
+  voiceConnection = null;
+  voicePeerId = null;
+  pendingIceCandidates = [];
+  if (localVoiceStream) {
+    for (const track of localVoiceStream.getTracks()) track.stop();
+    localVoiceStream = null;
+  }
+  voiceAudio.srcObject = null;
+  voiceAudio.muted = false;
+  voiceControls.hidden = true;
+  clearTimeout(voiceInviteTimer);
+  voiceInviteTimer = null;
+  voiceInviteTargetId = null;
+  refreshPlayerActions.lastUpdate = 0;
+  refreshPlayerActions();
+}
+
+function ensureVoiceConnection(peerId) {
+  if (voiceConnection && voicePeerId === peerId) return voiceConnection;
+  voiceConnection?.close();
+  voicePeerId = peerId;
+  voiceConnection = new RTCPeerConnection({
+    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+  });
+  for (const track of localVoiceStream.getTracks()) voiceConnection.addTrack(track, localVoiceStream);
+  voiceConnection.onicecandidate = event => {
+    if (event.candidate) {
+      socket.emit('voice:signal', {
+        targetId: peerId,
+        signal: { type: 'candidate', candidate: event.candidate.toJSON() }
+      });
+    }
+  };
+  voiceConnection.ontrack = event => {
+    voiceAudio.srcObject = event.streams[0];
+    voiceAudio.play().catch(error => {
+      voiceStatus.textContent = `TAP SPEAKER TO ENABLE AUDIO: ${error.message}`;
+    });
+  };
+  voiceConnection.onconnectionstatechange = () => {
+    if (!voiceConnection) return;
+    if (voiceConnection.connectionState === 'connected') voiceStatus.textContent = 'VOICE CONNECTED';
+    if (['failed', 'closed'].includes(voiceConnection.connectionState)) closeVoiceConnection(false);
+  };
+  voiceControls.hidden = false;
+  voiceStatus.textContent = 'CONNECTING VOICE...';
+  return voiceConnection;
+}
+
+async function handleVoiceSignal({ id, signal }) {
+  if (!signal || !id) return;
+  if (signal.type === 'offer') {
+    await acquireVoiceStream();
+    const connection = ensureVoiceConnection(id);
+    await connection.setRemoteDescription(signal);
+    for (const candidate of pendingIceCandidates.splice(0)) await connection.addIceCandidate(candidate);
+    const answer = await connection.createAnswer();
+    await connection.setLocalDescription(answer);
+    socket.emit('voice:signal', { targetId: id, signal: connection.localDescription.toJSON() });
+  } else if (signal.type === 'answer') {
+    if (!voiceConnection || voicePeerId !== id) return;
+    await voiceConnection.setRemoteDescription(signal);
+    for (const candidate of pendingIceCandidates.splice(0)) await voiceConnection.addIceCandidate(candidate);
+  } else if (signal.type === 'candidate') {
+    if (!voiceConnection || voicePeerId !== id || !signal.candidate) return;
+    const candidate = new RTCIceCandidate(signal.candidate);
+    if (!voiceConnection.remoteDescription) pendingIceCandidates.push(candidate);
+    else await voiceConnection.addIceCandidate(candidate);
+  }
 }
 
 function formatDistance(meters) {
@@ -453,30 +598,160 @@ function connectMultiplayer() {
     otherPlayers.clear();
     for (const player of players) otherPlayers.set(player.id, player);
     cityWorld.current?.updatePlayers([...otherPlayers.values()]);
+    refreshPlayerActions.lastUpdate = 0;
+    refreshPlayerActions();
     drawMiniMap(camera, playerMotion);
   });
   socket.on('players:joined', player => {
     otherPlayers.set(player.id, player);
     cityWorld.current?.updatePlayers([...otherPlayers.values()]);
+    refreshPlayerActions.lastUpdate = 0;
+    refreshPlayerActions();
     drawMiniMap(camera, playerMotion);
   });
   socket.on('players:update', player => {
     if (player.id === socket.id) return;
     otherPlayers.set(player.id, player);
     cityWorld.current?.setPlayer(player);
+    if (isPassenger && player.id === rideDriverId) {
+      cityWorld.current?.setPassengerPosition(player);
+      camera.lat = player.lat;
+      camera.lon = player.lon;
+      playerHeading = player.heading;
+      playerMotion = { heading: player.heading, vehicle: true, speed: player.speed };
+      updateHud();
+    }
+    refreshPlayerActions.lastUpdate = 0;
+    refreshPlayerActions();
     drawMiniMap(camera, playerMotion);
   });
   socket.on('players:left', id => {
     otherPlayers.delete(id);
+    if (id === rideDriverId) {
+      cityWorld.current?.setPassengerMode(null);
+      isPassenger = false;
+      rideDriverId = null;
+      passengerControls.hidden = true;
+    }
     cityWorld.current?.updatePlayers([...otherPlayers.values()]);
+    refreshPlayerActions.lastUpdate = 0;
+    refreshPlayerActions();
     drawMiniMap(camera, playerMotion);
+  });
+  socket.on('voice:incoming', player => {
+    pendingInteraction = { kind: 'voice', ...player };
+    refreshPlayerActions.lastUpdate = 0;
+    refreshPlayerActions();
+  });
+  socket.on('voice:accepted', async ({ id, initiator }) => {
+    if (!id || !initiator) return;
+    clearTimeout(voiceInviteTimer);
+    voiceInviteTimer = null;
+    voiceInviteTargetId = null;
+    try {
+      voicePeerId = id;
+      const connection = ensureVoiceConnection(id);
+      const offer = await connection.createOffer();
+      await connection.setLocalDescription(offer);
+      socket.emit('voice:signal', { targetId: id, signal: connection.localDescription.toJSON() });
+    } catch (error) {
+      playerActionStatus.textContent = `VOICE FAILED: ${error.message}`;
+      closeVoiceConnection();
+    }
+  });
+  socket.on('voice:signal', message => {
+    handleVoiceSignal(message).catch(error => {
+      playerActionStatus.textContent = `VOICE FAILED: ${error.message}`;
+      closeVoiceConnection();
+    });
+  });
+  socket.on('voice:rejected', ({ name }) => {
+    pendingInteraction = null;
+    closeVoiceConnection(false);
+    playerActionStatus.textContent = `${name} DECLINED THE CALL`;
+  });
+  socket.on('voice:cancelled', ({ id }) => {
+    if (pendingInteraction?.id === id) pendingInteraction = null;
+    refreshPlayerActions.lastUpdate = 0;
+    refreshPlayerActions();
+  });
+  socket.on('voice:invite-sent', ({ name }) => {
+    voiceStatus.textContent = `CALLING ${name.toUpperCase()}...`;
+    voiceControls.hidden = false;
+  });
+  socket.on('voice:invite-failed', ({ message }) => {
+    playerActionStatus.textContent = message.toUpperCase();
+    closeVoiceConnection(false);
+  });
+  socket.on('voice:ended', ({ name } = {}) => {
+    closeVoiceConnection(false);
+    playerActionStatus.textContent = name ? `${name} LEFT VOICE CHAT` : 'VOICE CHAT ENDED';
+  });
+  socket.on('car:ride-requested', player => {
+    pendingInteraction = { kind: 'ride-request', ...player };
+    refreshPlayerActions.lastUpdate = 0;
+    refreshPlayerActions();
+  });
+  socket.on('car:ride-invited', player => {
+    pendingInteraction = { kind: 'ride-invite', ...player };
+    refreshPlayerActions.lastUpdate = 0;
+    refreshPlayerActions();
+  });
+  socket.on('car:request-sent', ({ name }) => {
+    playerActionStatus.textContent = `RIDE REQUEST SENT TO ${name.toUpperCase()}`;
+  });
+  socket.on('car:ride-declined', ({ name }) => {
+    pendingInteraction = null;
+    playerActionStatus.textContent = `${name} DECLINED`;
+    refreshPlayerActions.lastUpdate = 0;
+    refreshPlayerActions();
+  });
+  socket.on('car:joined', ride => {
+    pendingInteraction = null;
+    if (ride.role === 'passenger') {
+      isPassenger = true;
+      rideDriverId = ride.otherId;
+      cityWorld.current?.setPassengerMode(ride);
+      camera.lat = ride.lat;
+      camera.lon = ride.lon;
+      playerMotion = { heading: ride.heading || 0, vehicle: true, speed: ride.speed || 0 };
+      updateTravelMode(true, ride.speed || 0);
+      passengerLabel.textContent = `RIDING WITH ${ride.otherName.toUpperCase()}`;
+      passengerControls.hidden = false;
+    } else {
+      passengerLabel.textContent = `${ride.otherName.toUpperCase()} IS RIDING WITH YOU`;
+      passengerControls.hidden = false;
+      document.querySelector('#leave-car').textContent = 'DROP PASSENGER';
+    }
+    playerActionStatus.textContent = ride.role === 'driver' ? 'PASSENGER JOINED' : 'RIDE STARTED';
+    refreshPlayerActions.lastUpdate = 0;
+    refreshPlayerActions();
+  });
+  socket.on('car:left', () => {
+    if (isPassenger) {
+      cityWorld.current?.setPassengerMode(null);
+      cityWorld.current?.setPosition(camera);
+      isPassenger = false;
+      rideDriverId = null;
+      updateTravelMode(false, 0);
+    }
+    passengerControls.hidden = true;
+    document.querySelector('#leave-car').textContent = 'LEAVE CAR';
+    refreshPlayerActions.lastUpdate = 0;
+    refreshPlayerActions();
   });
   socket.on('connect', () => {
     socket.emit('player:move', { lat: camera.lat, lon: camera.lon, ...playerMotion, vehicle: playerMotion.vehicle });
     tileStatus.textContent = 'ONLINE CITY · YOU ARE LIVE';
     drawMiniMap(camera, playerMotion);
   });
-  socket.on('disconnect', () => drawMiniMap(camera, playerMotion));
+  socket.on('disconnect', () => {
+    closeVoiceConnection(false);
+    pendingInteraction = null;
+    drawMiniMap(camera, playerMotion);
+    refreshPlayerActions.lastUpdate = 0;
+    refreshPlayerActions();
+  });
   socket.on('connect_error', error => {
     tileStatus.textContent = error.message.toUpperCase();
     drawMiniMap(camera, playerMotion);
@@ -489,6 +764,7 @@ function updatePlayer(position, motion = {}) {
   if (Number.isFinite(motion.heading)) playerHeading = motion.heading;
   playerMotion = { ...playerMotion, ...motion, heading: playerHeading };
   updateHud();
+  refreshPlayerActions();
   drawMiniMap(position, playerMotion);
   const now = performance.now();
   if (socket?.connected && now - lastPositionSentAt > 90) {
@@ -498,12 +774,16 @@ function updatePlayer(position, motion = {}) {
 }
 
 function updateTravelMode(isDriving, speed) {
+  playerMotion.vehicle = isDriving;
+  playerMotion.speed = speed;
   const mode = isDriving ? 'DRIVING' : 'ON FOOT';
   const speedText = `${Math.round(Math.abs(speed) * (isDriving ? 3.6 : 1))} ${isDriving ? 'KM/H' : 'M/S'}`;
   const modeElement = document.querySelector('#travel-mode');
   const speedElement = document.querySelector('#speed-readout');
   if (modeElement.textContent !== mode) modeElement.textContent = mode;
   if (speedElement.textContent !== speedText) speedElement.textContent = speedText;
+  document.querySelector('#mobile-enter-car').textContent = isPassenger ? 'LEAVE CAR' : isDriving ? 'EXIT CAR' : 'CAR';
+  refreshPlayerActions();
 }
 
 async function enterGame(user) {
@@ -603,6 +883,7 @@ document.querySelector('#clear-destination').addEventListener('click', () => {
 document.querySelector('#signout-button').addEventListener('click', async () => {
   try {
     await api('/api/auth/signout', { method: 'POST', body: '{}' });
+    closeVoiceConnection();
     socket?.disconnect();
     cityWorld.current?.destroy();
     cityWorld.current = null;
@@ -622,6 +903,87 @@ document.querySelector('#sound-toggle').addEventListener('click', event => {
   const soundOn = cityWorld.current?.toggleSound() || false;
   button.textContent = soundOn ? 'SOUND ON' : 'SOUND OFF';
   button.setAttribute('aria-label', soundOn ? 'Mute game sound' : 'Enable game sound');
+});
+talkPlayerButton.addEventListener('click', async () => {
+  if (!nearbyPlayer || !socket?.connected) return;
+  const targetId = nearbyPlayer.id;
+  const targetName = nearbyPlayer.name;
+  try {
+    await acquireVoiceStream();
+    voiceInviteTargetId = targetId;
+    voiceStatus.textContent = `CALLING ${targetName.toUpperCase()}...`;
+    voiceControls.hidden = false;
+    pendingInteraction = null;
+    socket.emit('voice:invite', targetId);
+    clearTimeout(voiceInviteTimer);
+    voiceInviteTimer = setTimeout(() => {
+      if (!voicePeerId) {
+        socket.emit('voice:cancel', voiceInviteTargetId);
+        closeVoiceConnection(false);
+        playerActionStatus.textContent = 'NO ANSWER · TRY AGAIN';
+      }
+    }, 30_000);
+  } catch (error) {
+    playerActionStatus.textContent = error.name === 'NotAllowedError'
+      ? 'ALLOW MICROPHONE ACCESS TO TALK'
+      : error.message.toUpperCase();
+  }
+});
+ridePlayerButton.addEventListener('click', () => {
+  if (!nearbyPlayer || !socket?.connected) return;
+  if (playerMotion.vehicle) socket.emit('car:invite', nearbyPlayer.id);
+  else socket.emit('car:request', nearbyPlayer.id);
+});
+acceptPlayerButton.addEventListener('click', async () => {
+  if (!pendingInteraction || !socket?.connected) return;
+  const interaction = pendingInteraction;
+  try {
+    if (interaction.kind === 'voice') await acquireVoiceStream();
+    pendingInteraction = null;
+    refreshPlayerActions.lastUpdate = 0;
+    refreshPlayerActions();
+    if (interaction.kind === 'voice') {
+      socket.emit('voice:accept', interaction.id);
+      voiceStatus.textContent = 'CONNECTING VOICE...';
+      voiceControls.hidden = false;
+    } else {
+      socket.emit('car:accept', interaction.id);
+    }
+  } catch (error) {
+    playerActionStatus.textContent = error.name === 'NotAllowedError'
+      ? 'ALLOW MICROPHONE ACCESS TO TALK'
+      : error.message.toUpperCase();
+  }
+});
+rejectPlayerButton.addEventListener('click', () => {
+  if (!pendingInteraction || !socket?.connected) return;
+  if (pendingInteraction.kind === 'voice') socket.emit('voice:reject', pendingInteraction.id);
+  else socket.emit('car:decline', pendingInteraction.id);
+  pendingInteraction = null;
+  refreshPlayerActions.lastUpdate = 0;
+  refreshPlayerActions();
+});
+document.querySelector('#voice-mic').addEventListener('click', event => {
+  const muted = localVoiceStream?.getAudioTracks().every(track => !track.enabled) || false;
+  if (!localVoiceStream) return;
+  for (const track of localVoiceStream.getAudioTracks()) track.enabled = muted;
+  event.currentTarget.textContent = muted ? 'MIC ON' : 'MIC OFF';
+});
+document.querySelector('#voice-speaker').addEventListener('click', event => {
+  voiceAudio.muted = !voiceAudio.muted;
+  event.currentTarget.textContent = voiceAudio.muted ? 'SPEAKER OFF' : 'SPEAKER ON';
+  if (!voiceAudio.muted) voiceAudio.play().catch(error => {
+    voiceStatus.textContent = `AUDIO UNAVAILABLE: ${error.message}`;
+  });
+});
+document.querySelector('#voice-end').addEventListener('click', () => closeVoiceConnection());
+document.querySelector('#leave-car').addEventListener('click', () => socket?.emit('car:leave'));
+document.querySelector('#mobile-enter-car').addEventListener('click', () => {
+  if (isPassenger) {
+    socket?.emit('car:leave');
+    return;
+  }
+  cityWorld.current?.toggleVehicle();
 });
 document.querySelector('#recenter').addEventListener('click', () => {
   destination = null;
