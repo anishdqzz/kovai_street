@@ -1,4 +1,4 @@
-import { createCityWorld } from './city-world.js?v=20';
+import { createCityWorld } from './city-world.js?v=21';
 
 const authScreen = document.querySelector('#auth-screen');
 const gameScreen = document.querySelector('#game-screen');
@@ -44,6 +44,8 @@ let voicePeerId = null;
 let voiceConnection = null;
 let localVoiceStream = null;
 let pendingIceCandidates = [];
+let voiceIceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
+let voiceRestartAttempted = false;
 let isPassenger = false;
 let rideDriverId = null;
 let voiceInviteTimer = null;
@@ -248,6 +250,7 @@ function closeVoiceConnection(notify = true) {
   voiceConnection = null;
   voicePeerId = null;
   pendingIceCandidates = [];
+  voiceRestartAttempted = false;
   if (localVoiceStream) {
     for (const track of localVoiceStream.getTracks()) track.stop();
     localVoiceStream = null;
@@ -267,7 +270,7 @@ function ensureVoiceConnection(peerId) {
   voiceConnection?.close();
   voicePeerId = peerId;
   voiceConnection = new RTCPeerConnection({
-    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    iceServers: voiceIceServers
   });
   for (const track of localVoiceStream.getTracks()) voiceConnection.addTrack(track, localVoiceStream);
   voiceConnection.onicecandidate = event => {
@@ -279,15 +282,50 @@ function ensureVoiceConnection(peerId) {
     }
   };
   voiceConnection.ontrack = event => {
-    voiceAudio.srcObject = event.streams[0];
+    const [remoteStream] = event.streams;
+    if (remoteStream) voiceAudio.srcObject = remoteStream;
+    else {
+      const stream = voiceAudio.srcObject instanceof MediaStream ? voiceAudio.srcObject : new MediaStream();
+      stream.addTrack(event.track);
+      voiceAudio.srcObject = stream;
+    }
+    voiceAudio.volume = 1;
+    voiceAudio.muted = false;
+    event.track.onunmute = () => { voiceStatus.textContent = 'REMOTE MIC ACTIVE'; };
+    event.track.onmute = () => { voiceStatus.textContent = 'REMOTE MIC MUTED'; };
     voiceAudio.play().catch(error => {
-      voiceStatus.textContent = `TAP SPEAKER TO ENABLE AUDIO: ${error.message}`;
+      voiceStatus.textContent = `TAP SPEAKER ON · AUDIO BLOCKED (${error.name})`;
     });
+  };
+  voiceConnection.oniceconnectionstatechange = () => {
+    if (!voiceConnection) return;
+    const state = voiceConnection.iceConnectionState;
+    if (state === 'checking') voiceStatus.textContent = 'CONNECTING AUDIO...';
+    if (state === 'connected' || state === 'completed') voiceStatus.textContent = 'AUDIO LINK READY · TAP SPEAKER ON';
+    if (state === 'disconnected') voiceStatus.textContent = 'AUDIO PAUSED · RECONNECTING...';
+    if (state === 'failed' && !voiceRestartAttempted) {
+      voiceRestartAttempted = true;
+      voiceStatus.textContent = 'RETRYING AUDIO ROUTE...';
+      voiceConnection.restartIce();
+      voiceConnection.createOffer({ iceRestart: true })
+        .then(offer => voiceConnection.setLocalDescription(offer))
+        .then(() => {
+          if (voiceConnection?.localDescription) {
+            socket.emit('voice:signal', { targetId: peerId, signal: voiceConnection.localDescription.toJSON() });
+          }
+        })
+        .catch(error => {
+          voiceStatus.textContent = `NETWORK BLOCKED (${error.message}) · TURN RELAY NEEDED`;
+        });
+    }
   };
   voiceConnection.onconnectionstatechange = () => {
     if (!voiceConnection) return;
-    if (voiceConnection.connectionState === 'connected') voiceStatus.textContent = 'VOICE CONNECTED';
-    if (['failed', 'closed'].includes(voiceConnection.connectionState)) closeVoiceConnection(false);
+    if (voiceConnection.connectionState === 'connected') voiceStatus.textContent = 'VOICE CONNECTED · CHECK SPEAKER';
+    if (voiceConnection.connectionState === 'failed') {
+      voiceStatus.textContent = 'NETWORK BLOCKED · TURN RELAY NEEDED';
+    }
+    if (voiceConnection.connectionState === 'closed') closeVoiceConnection(false);
   };
   voiceControls.hidden = false;
   voiceStatus.textContent = 'CONNECTING VOICE...';
@@ -970,11 +1008,15 @@ document.querySelector('#voice-mic').addEventListener('click', event => {
   event.currentTarget.textContent = muted ? 'MIC ON' : 'MIC OFF';
 });
 document.querySelector('#voice-speaker').addEventListener('click', event => {
-  voiceAudio.muted = !voiceAudio.muted;
-  event.currentTarget.textContent = voiceAudio.muted ? 'SPEAKER OFF' : 'SPEAKER ON';
-  if (!voiceAudio.muted) voiceAudio.play().catch(error => {
-    voiceStatus.textContent = `AUDIO UNAVAILABLE: ${error.message}`;
-  });
+  const muteOutput = !voiceAudio.muted && !voiceAudio.paused;
+  voiceAudio.muted = muteOutput;
+  event.currentTarget.textContent = muteOutput ? 'SPEAKER OFF' : 'SPEAKER ON';
+  if (!muteOutput) {
+    voiceAudio.volume = 1;
+    voiceAudio.play().catch(error => {
+      voiceStatus.textContent = `AUDIO UNAVAILABLE (${error.name}) · CHECK PHONE VOLUME`;
+    });
+  }
 });
 document.querySelector('#voice-end').addEventListener('click', () => closeVoiceConnection());
 document.querySelector('#leave-car').addEventListener('click', () => socket?.emit('car:leave'));

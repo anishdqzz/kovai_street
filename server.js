@@ -71,6 +71,14 @@ const userSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const User = mongoose.model('User', userSchema);
+const voiceIceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
+if (process.env.TURN_URLS && process.env.TURN_USERNAME && process.env.TURN_CREDENTIAL) {
+  voiceIceServers.push({
+    urls: process.env.TURN_URLS.split(',').map(url => url.trim()).filter(Boolean),
+    username: process.env.TURN_USERNAME,
+    credential: process.env.TURN_CREDENTIAL
+  });
+}
 const localUsers = new Map();
 const localDataDirectory = path.join(root, '.data');
 const localUsersFile = path.join(localDataDirectory, 'users.json');
@@ -400,6 +408,7 @@ function arePlayersNearby(first, second, limit = 35) {
 }
 
 io.on('connection', socket => {
+  socket.emit('voice:config', voiceIceServers);
   const player = {
     id: socket.id,
     name: socket.data.playerName,
