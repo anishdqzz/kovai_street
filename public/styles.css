@@ -1,0 +1,214 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@1,600&display=swap');
+
+:root {
+  color-scheme: dark;
+  --ink: #f2f3ed;
+  --muted: #838b7f;
+  --lime: #d4f36a;
+  --line: rgba(225, 234, 211, .11);
+  font-family: "DM Sans", sans-serif;
+  background: #101510;
+  color: var(--ink);
+  font-synthesis: none;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; background: #101510; }
+button, input { font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button { color: inherit; }
+[hidden] { display: none !important; }
+
+.auth-screen { min-height: 100vh; display: grid; grid-template-columns: 1.12fr .88fr; }
+.auth-art { position: relative; min-height: 100vh; overflow: hidden; padding: 39px 6.2vw 31px; display: flex; flex-direction: column; justify-content: space-between; background: radial-gradient(ellipse at 68% 62%, #283527 0%, #1b251d 34%, #151b16 72%); }
+.wordmark { color: var(--ink); text-decoration: none; font-size: 15px; font-weight: 800; letter-spacing: .17em; }
+.wordmark span { color: var(--lime); }
+.art-copy { z-index: 1; position: relative; margin: auto 0 11vh; }
+.eyebrow, .panel-kicker, .places-heading, .neighbourhood-card small, .map-top-left, .map-bottom-left, .minimap-heading, .auth-legal, .game-location small, .signout-button, .panel-bottom, .places-count, .destination-card > span, .destination-card small { font-family: "DM Mono", monospace; letter-spacing: .1em; font-size: 10px; }
+.eyebrow { color: #bdc6b8; display: flex; align-items: center; gap: 10px; }
+.live-dot { display: inline-block; width: 7px; height: 7px; background: var(--lime); border-radius: 50%; box-shadow: 0 0 13px #d4f36a77; }
+.art-copy h1 { margin: 25px 0 16px; font-size: clamp(62px, 7.4vw, 108px); letter-spacing: -.078em; line-height: .92; font-weight: 600; }
+.art-copy h1 span { color: var(--lime); }
+.art-copy p { color: #a8b0a3; font-size: 15px; max-width: 360px; line-height: 1.7; }
+.map-sketch { position: absolute; width: 52%; height: 57%; bottom: 13%; right: -4%; opacity: .36; transform: rotate(-13deg); }
+.sketch-road { position: absolute; height: 1px; background: #8b9a83; opacity: .45; transform-origin: left; }
+.road-a { left: 0; top: 26%; width: 110%; transform: rotate(22deg); }.road-b { left: 7%; top: 61%; width: 100%; transform: rotate(-27deg); }.road-c { left: 24%; top: 0; height: 110%; width: 1px; transform: rotate(31deg); }.road-d { left: 70%; top: -4%; height: 120%; width: 1px; transform: rotate(-28deg); }
+.sketch-pin { position: absolute; color: var(--lime); border: 1px solid #d4f36a55; padding: 7px 9px; font: 9px "DM Mono", monospace; letter-spacing: .12em; }
+.pin-a { top: 30%; left: 49%; }.pin-b { top: 65%; left: 17%; }.pin-c { top: 4%; left: 31%; }
+.sketch-you { position: absolute; top: 47%; left: 44%; color: var(--ink); font: 9px "DM Mono", monospace; letter-spacing: .1em; display: flex; gap: 9px; align-items: center; }
+.sketch-you i { width: 11px; height: 11px; display: block; border-radius: 50%; background: var(--lime); box-shadow: 0 0 0 5px #d4f36a22; }
+.art-footer { z-index: 1; display: flex; justify-content: space-between; color: #737f70; font: 9px "DM Mono", monospace; letter-spacing: .13em; }
+.auth-side { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px 6vw 24px; background: #101510; }
+.auth-card { position: relative; z-index: 1; width: min(100%, 392px); }
+.auth-card h2 { margin: 0; font-size: 34px; letter-spacing: -.055em; font-weight: 600; }
+.form-subtitle { color: #899186; font-size: 13px; line-height: 1.7; margin: 10px 0 31px; }
+.field { margin: 0 0 19px; }
+.field label { display: block; color: #cbd0c5; font-size: 11px; margin-bottom: 9px; }
+.field input { display: block; width: 100%; height: 48px; border: 1px solid #333c32; border-radius: 4px; outline: none; padding: 0 13px; color: var(--ink); background: #151c16; font-size: 13px; transition: border-color .15s; }
+.field input { position: relative; z-index: 1; pointer-events: auto; user-select: text; cursor: text; }
+.field label { position: relative; z-index: 1; }
+.field input:focus { border-color: #a7c65f; }
+.field input::placeholder { color: #61695e; }
+.form-row { display: flex; justify-content: flex-end; margin: -5px 0 21px; }
+.text-button { padding: 0; border: 0; background: none; color: var(--lime); font-size: 11px; cursor: pointer; }
+.primary-button { width: 100%; min-height: 49px; border: 0; border-radius: 4px; background: var(--lime); color: #172012; font-size: 12px; font-weight: 700; cursor: pointer; transition: background .16s, transform .16s; }
+.primary-button:hover { background: #e1ff84; transform: translateY(-1px); }
+.primary-button:disabled { cursor: wait; opacity: .65; transform: none; }
+.auth-switch { text-align: center; color: #899186; font-size: 12px; margin: 23px 0 0; }
+.auth-switch button { margin-left: 4px; font-size: 12px; }
+.status-message { min-height: 18px; margin: 14px 0 0; color: #d5ed94; font-size: 12px; line-height: 1.55; }
+.status-message.error { color: #ff9b85; }
+.auth-legal { margin-top: auto; color: #687166; text-align: center; padding-top: 35px; font-size: 8px; }
+.auth-legal span { padding: 0 7px; color: var(--lime); }
+.mobile-brand { display: none; }
+
+.game-screen { min-height: 100vh; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+.game-topbar { height: 68px; flex: 0 0 68px; display: flex; align-items: center; padding: 0 29px; border-bottom: 1px solid var(--line); background: linear-gradient(100deg, #182019, #111612 72%); }
+.game-brand { text-decoration: none; color: var(--lime); font-weight: 800; font-size: 27px; letter-spacing: -.08em; margin-right: 25px; }
+.game-brand span { color: var(--ink); }
+.game-location { display: flex; align-items: center; gap: 11px; border-left: 1px solid var(--line); padding-left: 24px; }
+.game-location strong, .game-location small { display: block; }
+.game-location strong { font: 11px "DM Mono", monospace; letter-spacing: .13em; }
+.game-location small { color: #7c8579; font-size: 8px; margin-top: 4px; }
+.game-location .live-dot { width: 6px; height: 6px; }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 24px; }
+.player-name { color: #aeb6a9; font-size: 12px; }
+.signout-button { border: 1px solid #394337; border-radius: 3px; background: transparent; padding: 9px 12px; font-size: 9px; cursor: pointer; }
+.signout-button span { color: var(--lime); margin-left: 8px; }
+.game-layout { display: grid; grid-template-columns: 298px 1fr; gap: 0; flex: 1; min-height: 0; }
+.city-panel { padding: 25px 23px 0; background: linear-gradient(160deg, #182019, #121713 58%); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+.panel-kicker { color: #929c8b; display: flex; justify-content: space-between; font-size: 9px; }
+.panel-kicker span { color: #5e695a; }
+.city-panel h1 { font-size: 39px; letter-spacing: -.07em; line-height: 1.02; font-weight: 500; margin: 24px 0 10px; }
+.city-panel h1 em { font-family: "Playfair Display", serif; font-weight: 600; color: var(--lime); }
+.panel-intro { color: #899186; font-size: 11px; line-height: 1.65; margin: 0 0 18px; max-width: 220px; }
+.neighbourhood-card { display: flex; gap: 11px; align-items: center; min-height: 54px; padding: 10px 12px; border: 1px solid #34412e; background: #192117; border-radius: 3px; }
+.neighbourhood-icon { color: var(--lime); font-size: 20px; }
+.neighbourhood-card small, .neighbourhood-card strong { display: block; }
+.neighbourhood-card small { color: #818d77; font-size: 8px; margin-bottom: 5px; }
+.neighbourhood-card strong { font: 10px "DM Mono", monospace; letter-spacing: .1em; }
+.places-heading { display: flex; justify-content: space-between; color: #9ba494; margin: 24px 0 10px; font-size: 9px; }
+.places-heading span:last-child { color: var(--lime); }
+.places-list { overflow: auto; scrollbar-width: thin; scrollbar-color: #374334 transparent; flex: 1; }
+.place-button { display: grid; width: 100%; grid-template-columns: 25px 1fr auto; align-items: center; text-align: left; padding: 10px 8px; border: 1px solid transparent; border-bottom-color: #252d25; border-radius: 3px; background: transparent; cursor: pointer; transition: background .16s, border-color .16s, transform .16s; }
+.place-button:hover { background: #202a1f; border-color: #3d4b32; transform: translateX(2px); }
+.place-button:hover .place-name { color: var(--lime); }
+.place-index { font: 9px "DM Mono", monospace; color: #65715f; }
+.place-name { font-size: 11px; color: #d4d9ce; transition: color .15s; }
+.place-type { color: #76816e; font: 8px "DM Mono", monospace; }
+.panel-bottom { display: flex; align-items: center; height: 51px; flex: 0 0 51px; border-top: 1px solid var(--line); color: #919a89; font-size: 8px; gap: 8px; white-space: nowrap; }
+.weather-icon { color: var(--lime); font-size: 14px; }
+.panel-divider { height: 13px; border-left: 1px solid #374034; margin: 0 2px; }
+.panel-clock { margin-left: auto; color: #687262; font-size: 7px; }
+.panel-clock b { display: block; text-align: right; color: #b5bea9; font-size: 9px; font-weight: 400; margin-top: 3px; }
+.map-shell { position: relative; overflow: hidden; background: radial-gradient(ellipse at 50% 55%, #81907e, #303d35 76%); min-width: 0; }
+#game-map { width: 100%; height: 100%; display: block; outline: none; touch-action: none; }
+.map-wash { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(14, 21, 16, .45), transparent 20%, transparent 77%, rgba(14, 21, 16, .5)); }
+.map-top-left { position: absolute; top: 18px; left: 19px; display: flex; gap: 15px; align-items: center; font-size: 8px; pointer-events: none; }
+.map-live { padding: 7px 9px; background: #131a14dc; border: 1px solid #ffffff20; border-radius: 2px; }
+.map-live i { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #a7ec75; margin-right: 6px; box-shadow: 0 0 8px #a7ec75; }
+.map-coords { color: #fff; text-shadow: 0 1px 5px #111; }
+.map-tools { position: absolute; top: 18px; right: 17px; display: grid; gap: 5px; }
+.map-tools button { width: 35px; height: 35px; border: 1px solid #ffffff38; border-radius: 3px; color: #fff; background: #172019d9; font-size: 18px; cursor: pointer; }
+.map-tools button:hover { color: var(--lime); border-color: #d4f36a9c; }
+.destination-card { position: absolute; top: 72px; right: 63px; width: 185px; padding: 12px 30px 11px 13px; background: #151d16ed; border: 1px solid #d4f36a53; border-radius: 3px; }
+.destination-card > span, .destination-card small { display: block; color: #859179; font-size: 8px; }
+.destination-card strong { display: block; color: var(--lime); font: 10px "DM Mono", monospace; margin: 7px 0 5px; }
+.destination-card small { color: #b4bcae; }
+.destination-card button { position: absolute; right: 9px; top: 8px; border: 0; color: #a4ae9c; background: none; font-size: 17px; cursor: pointer; }
+.map-bottom-left { position: absolute; left: 18px; bottom: 12px; display: flex; flex-direction: column; gap: 6px; color: #e0e5db; font-size: 7px; text-shadow: 0 1px 4px #111; pointer-events: none; }
+.map-credit a { color: inherit; }
+.tile-status { color: #bec8b5; }
+.map-bottom-right { position: absolute; width: 286px; left: 17px; right: auto; bottom: 16px; display: grid; gap: 9px; }
+.mini-map-card { padding: 10px; border: 1px solid #d3dfd226; border-radius: 7px; background: linear-gradient(145deg, #111a18f2, #111813eb); box-shadow: 0 9px 32px #090c0a8a; backdrop-filter: blur(12px); }
+.mini-map-title { display: flex; align-items: center; justify-content: space-between; color: #bdc9b0; font: 8px "DM Mono", monospace; letter-spacing: .12em; padding: 0 2px 7px; }
+.mini-map-title b { color: var(--lime); font-weight: 500; }
+.mini-map-actions { display: flex; align-items: center; gap: 7px; }
+.mini-map-online { color: #9eaa9e; font: 7px "DM Mono", monospace; letter-spacing: .08em; white-space: nowrap; }
+.mini-map-online.connected { color: #b9e872; }
+.mini-map-actions button { border: 1px solid #526148; border-radius: 2px; padding: 3px 5px; color: #d4f36a; background: #202b25; font: 7px "DM Mono", monospace; cursor: pointer; }
+.mini-map-actions button:hover { border-color: var(--lime); }
+#city-minimap { display: block; width: 100%; height: 140px; border: 1px solid #dbe4da29; border-radius: 8px; background: #15201d; }
+.mini-map-legend { display: flex; align-items: center; gap: 6px; padding: 7px 2px 0; color: #aeb8a5; font: 7px "DM Mono", monospace; letter-spacing: .08em; }
+.mini-map-legend > i { width: 7px; height: 7px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 8px #d4f36a99; }
+.mini-map-legend span { display: flex; align-items: center; gap: 5px; margin-left: auto; }
+.mini-map-legend span b { width: 6px; height: 6px; border-radius: 50%; background: #ffbd63; }
+.mini-map-legend .mini-map-player-key { margin-left: auto; }
+.mini-map-player-key b { width: 7px; height: 7px; border: 1px solid #bfe8ff; border-radius: 50%; background: #59bce9; box-shadow: 0 0 7px #59bce988; }
+.mini-map-player-key strong { color: #d8e0d5; font-weight: 500; }
+#mini-map-target-key b { background: #ff4f9a; box-shadow: 0 0 7px #ff4f9a99; }
+.city-story-card { padding: 10px 12px; border: 1px solid #e6e8d738; border-radius: 5px; background: linear-gradient(125deg, #172019ed, #172019d9); box-shadow: 0 8px 28px #0c100c55; backdrop-filter: blur(10px); }
+.story-card-kicker { display: flex; align-items: center; gap: 7px; color: #b5c39e; font: 8px "DM Mono", monospace; letter-spacing: .13em; }
+.story-card-kicker i { width: 6px; height: 6px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 9px #d4f36a99; }
+.city-story-card strong, .city-story-card small { display: block; }
+.city-story-card strong { margin-top: 8px; color: #f2f3ed; font: 9px "DM Mono", monospace; letter-spacing: .07em; }
+.city-story-card small { margin-top: 5px; color: #a8b19f; font-size: 10px; }
+.game-controls { min-height: 51px; flex: 0 0 51px; display: flex; align-items: center; gap: 6px; padding: 0 23px; background: #131914; border-top: 1px solid var(--line); }
+.control-key { display: inline-grid; place-items: center; min-width: 22px; height: 21px; padding: 0 5px; border: 1px solid #3b4538; border-radius: 3px; color: #d4dbcc; font: 9px "DM Mono", monospace; }
+.vertical-keys { padding: 1px 2px; display: flex; gap: 2px; }
+.vertical-keys i { font-style: normal; }
+.control-copy { color: #899285; font: 8px "DM Mono", monospace; margin: 0 10px 0 4px; }
+.control-separator { height: 17px; border-left: 1px solid #394236; margin: 0 8px; }
+.control-hint { margin-left: auto; color: #778071; font-size: 10px; }
+.touch-pad { display: none; }
+
+@media (max-width: 820px) {
+  .auth-screen { grid-template-columns: 1fr; }
+  .auth-art { display: none; }
+  .auth-side { min-height: 100vh; padding: 26px 25px 22px; justify-content: center; }
+  .mobile-brand { display: block; width: min(100%, 392px); margin-bottom: 50px; }
+  .auth-legal { margin-top: auto; }
+  .game-layout { grid-template-columns: 245px 1fr; }
+  .city-panel { padding-left: 17px; padding-right: 17px; }
+  .city-panel h1 { font-size: 33px; }
+  .game-controls { padding: 0 14px; }
+  .control-hint { display: none; }
+}
+@media (min-width: 581px) and (max-height: 600px) {
+  .city-panel { padding-top: 12px; }
+  .city-panel h1, .panel-intro, .neighbourhood-card, .panel-bottom { display: none; }
+  .places-heading { margin: 9px 0 6px; }
+  .place-button { padding-top: 9px; padding-bottom: 9px; }
+  .map-bottom-right { width: 260px; left: 14px; bottom: 12px; }
+  .destination-card { top: 45px; }
+  #city-minimap { height: 118px; }
+  .city-story-card { display: none; }
+}
+@media (max-width: 580px) {
+  .game-screen { height: 100dvh; }
+  .game-topbar { height: 57px; flex-basis: 57px; padding: 0 14px; }
+  .game-brand { font-size: 23px; margin-right: 14px; }
+  .game-location { padding-left: 14px; }
+  .game-location strong { font-size: 9px; }
+  .player-name { display: none; }
+  .signout-button { font-size: 8px; padding: 8px; }
+  .game-layout { display: flex; flex-direction: column-reverse; }
+  .map-shell { flex: 1; min-height: 0; }
+  .city-panel { height: 210px; flex: 0 0 210px; padding: 12px 15px 0; border-right: 0; border-top: 1px solid var(--line); }
+  .panel-kicker, .city-panel h1, .panel-intro, .neighbourhood-card, .panel-bottom { display: none; }
+  .places-heading { margin: 0 0 6px; }
+  .places-list { display: flex; flex-wrap: nowrap; gap: 7px; overflow-x: auto; overflow-y: hidden; flex: 1; align-items: flex-start; }
+  .place-button { display: flex; flex: 0 0 145px; flex-direction: column; align-items: flex-start; gap: 6px; min-height: 64px; padding: 11px; border: 1px solid #303a2e; border-radius: 3px; background: #182018; }
+  .place-index { display: none; }
+  .place-name { font-size: 10px; }
+  .place-type { font-size: 7px; }
+  .game-controls { min-height: 42px; flex-basis: 42px; padding: 0 10px; gap: 4px; }
+  .control-key { min-width: 18px; height: 18px; font-size: 8px; }
+  .control-copy { font-size: 7px; margin-right: 4px; }
+  .control-separator { margin: 0 3px; }
+  .map-bottom-right { width: min(246px, calc(100% - 20px)); left: 10px; bottom: 54px; gap: 6px; }
+  .mini-map-card { padding: 6px; }
+  .mini-map-title { font-size: 7px; padding-bottom: 5px; }
+  #city-minimap { height: 112px; }
+  .mini-map-legend { font-size: 6px; padding-top: 5px; }
+  .city-story-card { display: none; }
+  .map-bottom-left { left: 10px; bottom: 10px; }
+  .map-top-left { left: 10px; top: 11px; gap: 8px; }
+  .map-tools { right: 10px; top: 11px; }
+  .touch-pad { position: absolute; right: 10px; bottom: 54px; display: grid; grid-template-columns: repeat(3, 36px); grid-template-rows: repeat(2, 36px); gap: 3px; touch-action: none; }
+  .touch-pad button { width: 36px; height: 36px; border: 1px solid #ffffff52; border-radius: 4px; background: #172019d9; color: #f2f3ed; font-size: 16px; }
+  .touch-pad button:first-child { grid-column: 2; }
+  .touch-pad button:nth-child(2) { grid-column: 1; grid-row: 2; }
+  .touch-pad button:nth-child(3) { grid-column: 2; grid-row: 2; }
+  .touch-pad button:nth-child(4) { grid-column: 3; grid-row: 2; }
+}

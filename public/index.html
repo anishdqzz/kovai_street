@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#101510">
+    <meta name="description" content="Explore a third-person open-world game through the streets and landmarks of Coimbatore.">
+    <title>Kovai Streets — Coimbatore, your way</title>
+    <link rel="preconnect" href="https://tile.openstreetmap.org">
+    <link rel="stylesheet" href="/styles.css?v=10">
+    <script src="/socket.io/socket.io.js" defer></script>
+    <script type="module" src="/game.js?v=28"></script>
+  </head>
+  <body>
+    <main id="auth-screen" class="auth-screen">
+      <section class="auth-art" aria-label="Kovai Streets game introduction">
+        <a class="wordmark" href="/">KOVAI<span>STREETS</span></a>
+        <div class="art-copy">
+          <div class="eyebrow"><span class="live-dot"></span> A CITY THAT'S YOURS</div>
+          <h1>Find your<br><span>own way.</span></h1>
+          <p>From Race Course to Marudhamalai. Every turn is a little more Kovai.</p>
+        </div>
+        <div class="map-sketch" aria-hidden="true">
+          <span class="sketch-road road-a"></span><span class="sketch-road road-b"></span>
+          <span class="sketch-road road-c"></span><span class="sketch-road road-d"></span>
+          <span class="sketch-pin pin-a">RACE COURSE</span><span class="sketch-pin pin-b">GANDHIPURAM</span>
+          <span class="sketch-pin pin-c">RS PURAM</span><span class="sketch-you">YOU ARE HERE <i></i></span>
+        </div>
+        <div class="art-footer"><span>11°00′N 76°58′E</span><span>COIMBATORE · TAMIL NADU</span></div>
+      </section>
+
+      <section class="auth-side">
+        <div class="mobile-brand"><a class="wordmark" href="/">KOVAI<span>STREETS</span></a></div>
+        <div class="auth-card">
+          <div id="auth-content"></div>
+          <p id="auth-status" class="status-message" role="status" aria-live="polite"></p>
+        </div>
+        <div class="auth-legal">MADE FOR THE STREETS OF KOVAI <span>·</span> YOUR CITY, YOUR STORY</div>
+      </section>
+    </main>
+
+    <main id="game-screen" class="game-screen" hidden>
+      <header class="game-topbar">
+        <a class="game-brand" href="/" aria-label="Kovai Streets home">K<span>.</span></a>
+        <div class="game-location"><span class="live-dot"></span><div><strong>COIMBATORE</strong><small>TAMIL NADU, INDIA</small></div></div>
+        <div class="topbar-right"><span id="player-name" class="player-name"></span><button id="signout-button" class="signout-button">SIGN OUT <span>↗</span></button></div>
+      </header>
+
+      <section class="game-layout">
+        <aside class="city-panel">
+          <div class="panel-kicker">KOVAI · OPEN WORLD <span>FREE ROAM</span></div>
+          <h1>Your city.<br><em>Your story.</em></h1>
+          <p class="panel-intro">Walk the streets, stop for tea, or catch the town bus.</p>
+          <div class="neighbourhood-card"><span class="neighbourhood-icon">⌖</span><div><small>YOU'RE EXPLORING</small><strong id="current-area">GANDHIPURAM</strong></div></div>
+          <div class="places-heading"><span>PLACES TO EXPLORE</span><span id="places-count">00 / 51</span></div>
+          <div id="places-list" class="places-list"></div>
+          <div class="panel-bottom"><span class="weather-icon">✳</span><span id="travel-mode">ON FOOT</span><span class="panel-divider"></span><span id="speed-readout">0 M/S</span><span class="panel-clock">KOVAI TIME <b id="city-time">18:30</b></span></div>
+        </aside>
+
+        <section class="map-shell" aria-label="Third-person Coimbatore open-world game">
+          <canvas id="game-map" tabindex="0" aria-label="Third-person Coimbatore city game. Drive or walk with W A S D, arrow keys, or the on-screen controls."></canvas>
+          <div class="map-wash"></div>
+          <div class="map-top-left"><span class="map-live"><i></i> LIVE MAP</span><span class="map-coords" id="map-coords">11.0168° N · 76.9558° E</span></div>
+          <div class="map-tools"><button id="zoom-in" aria-label="Zoom in">+</button><button id="zoom-out" aria-label="Zoom out">−</button><button id="recenter" aria-label="Return to Gandhipuram">⌖</button></div>
+          <div id="destination-card" class="destination-card" hidden><span>YOUR NEXT STOP</span><strong id="destination-name"></strong><small id="destination-distance"></small><button id="clear-destination" aria-label="Clear destination">×</button></div>
+          <div class="touch-pad" aria-label="Movement controls">
+            <button type="button" data-move="forward" aria-label="Move forward">↑</button>
+            <button type="button" data-move="left" aria-label="Turn left">←</button>
+            <button type="button" data-move="backward" aria-label="Move backward">↓</button>
+            <button type="button" data-move="right" aria-label="Turn right">→</button>
+          </div>
+          <div class="map-bottom-left"><span class="map-credit">MAP DATA © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OPENSTREETMAP</a> CONTRIBUTORS</span><span id="tile-status" class="tile-status">LOADING CITY...</span></div>
+          <div class="map-bottom-right">
+            <div class="mini-map-card">
+              <div class="mini-map-title"><span id="mini-map-place">CITY NAVIGATION</span><span class="mini-map-actions"><span id="mini-map-online" class="mini-map-online">OFFLINE</span><button id="sound-toggle" type="button" aria-label="Mute game sound">SOUND ON</button><b id="mini-map-heading">N ↑</b></span></div>
+              <canvas id="city-minimap" width="400" height="220" aria-label="Live city navigation map showing your position, route, and nearby players"></canvas>
+              <div class="mini-map-legend"><i></i> YOU <span class="mini-map-player-key"><b></b> PLAYERS <strong id="mini-map-player-count">0</strong></span><span id="mini-map-target-key"><b></b> ROUTE</span></div>
+            </div>
+            <div class="city-story-card">
+              <div class="story-card-kicker"><i></i> LIFE ON THE STREET</div>
+              <strong>TEA KADAI · KOVIL · TOWN BUS</strong>
+              <small>Take a walk around Gandhipuram</small>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <footer class="game-controls"><span class="control-key">W</span><span class="control-key">A</span><span class="control-key">S</span><span class="control-key">D</span><span class="control-copy">MOVE / TURN</span><span class="control-separator"></span><span class="control-key">SHIFT</span><span class="control-copy">SPRINT / DRIVE</span><span class="control-separator"></span><span class="control-key">E</span><span class="control-copy">ENTER CAR</span><span class="control-key">SPACE</span><span class="control-copy">JUMP</span><span class="control-hint">Third-person · Coimbatore, Tamil Nadu</span></footer>
+    </main>
+  </body>
+</html>
