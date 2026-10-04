@@ -1,4 +1,4 @@
-import { createCityWorld } from './city-world.js?v=23';
+import { createCityWorld } from './city-world.js?v=24';
 import { CITY_ORIGIN, PLAYER_START } from './map-config.js';
 
 const authScreen = document.querySelector('#auth-screen');
@@ -32,6 +32,19 @@ const voiceStatus = document.querySelector('#voice-status');
 const voiceAudio = document.querySelector('#voice-audio');
 const dayCycleButton = document.querySelector('#day-cycle');
 const rainToggleButton = document.querySelector('#rain-toggle');
+const storyDialog = document.querySelector('#city-story-dialog');
+const vehicleDialog = document.querySelector('#vehicle-dialog');
+const selectedVehicle = localStorage.getItem('kovai-vehicle');
+const vehicleOptions = [
+  { id: 'hatchback', name: 'Hatchback', label: 'CITY CAR' },
+  { id: 'auto', name: 'Auto Rickshaw', label: 'KOVAI AUTO' },
+  { id: 'jeep', name: 'Jeep', label: 'OFF-ROAD' },
+  { id: 'bike', name: 'Motorcycle', label: 'TWO WHEELER' },
+  { id: 'van', name: 'Mini Van', label: 'FAMILY RIDE' }
+];
+const initialVehicleType = vehicleOptions.some(vehicle => vehicle.id === selectedVehicle)
+  ? selectedVehicle
+  : 'hatchback';
 const passengerControls = document.querySelector('#passenger-controls');
 const passengerLabel = document.querySelector('#passenger-label');
 const cityWorld = { current: null };
@@ -40,7 +53,7 @@ const otherPlayers = new Map();
 let miniMapUpdatedAt = 0;
 let playerHeading = 0;
 let mapTiles = [];
-let playerMotion = { heading: 0, vehicle: false, speed: 0 };
+let playerMotion = { heading: 0, vehicle: false, speed: 0, vehicleType: initialVehicleType };
 let nearbyPlayer = null;
 let pendingInteraction = null;
 let voicePeerId = null;
@@ -670,7 +683,7 @@ function connectMultiplayer() {
       camera.lat = player.lat;
       camera.lon = player.lon;
       playerHeading = player.heading;
-      playerMotion = { heading: player.heading, vehicle: true, speed: player.speed };
+      playerMotion = { heading: player.heading, vehicle: true, speed: player.speed, vehicleType: player.vehicleType };
       updateHud();
     }
     refreshPlayerActions.lastUpdate = 0;
@@ -766,7 +779,12 @@ function connectMultiplayer() {
       cityWorld.current?.setPassengerMode(ride);
       camera.lat = ride.lat;
       camera.lon = ride.lon;
-      playerMotion = { heading: ride.heading || 0, vehicle: true, speed: ride.speed || 0 };
+      playerMotion = {
+        heading: ride.heading || 0,
+        vehicle: true,
+        speed: ride.speed || 0,
+        vehicleType: ride.vehicleType || playerMotion.vehicleType
+      };
       updateTravelMode(true, ride.speed || 0);
       passengerLabel.textContent = `RIDING WITH ${ride.otherName.toUpperCase()}`;
       passengerControls.hidden = false;
@@ -834,7 +852,14 @@ function updateTravelMode(isDriving, speed) {
   const speedElement = document.querySelector('#speed-readout');
   if (modeElement.textContent !== mode) modeElement.textContent = mode;
   if (speedElement.textContent !== speedText) speedElement.textContent = speedText;
-  document.querySelector('#mobile-enter-car').textContent = isPassenger ? 'LEAVE CAR' : isDriving ? 'EXIT CAR' : 'CAR';
+  const currentVehicle = vehicleOptions.find(vehicle => vehicle.id === playerMotion.vehicleType);
+  document.querySelector('#mobile-enter-car').textContent = isPassenger
+    ? 'LEAVE CAR'
+    : isDriving ? 'EXIT' : currentVehicle?.label ?? 'CAR';
+  document.querySelector('#mobile-enter-car').setAttribute(
+    'aria-label',
+    isPassenger ? 'Leave passenger ride' : isDriving ? `Exit ${currentVehicle?.name ?? 'vehicle'}` : `Drive ${currentVehicle?.name ?? 'car'}`
+  );
   refreshPlayerActions();
 }
 
@@ -861,6 +886,7 @@ async function enterGame(user) {
       onStatus: message => { tileStatus.textContent = message; },
       onMode: updateTravelMode
     });
+    if (initialVehicleType !== 'hatchback') cityWorld.current.setVehicleType(initialVehicleType);
     updateClock();
     updateTravelMode(false, 0);
     canvas.focus({ preventScroll: true });
@@ -1041,6 +1067,33 @@ document.querySelector('#mobile-enter-car').addEventListener('click', () => {
     return;
   }
   cityWorld.current?.toggleVehicle();
+});
+document.querySelector('#city-story-button').addEventListener('click', () => storyDialog.showModal());
+document.querySelector('#close-city-story').addEventListener('click', () => storyDialog.close());
+document.querySelector('#vehicle-select-button').addEventListener('click', () => vehicleDialog.showModal());
+document.querySelector('#close-vehicle-dialog').addEventListener('click', () => vehicleDialog.close());
+document.querySelectorAll('[data-vehicle]').forEach(button => {
+  button.setAttribute('aria-pressed', String(button.dataset.vehicle === initialVehicleType));
+  button.addEventListener('click', () => {
+    const vehicle = vehicleOptions.find(option => option.id === button.dataset.vehicle);
+    if (!vehicle) {
+      console.error(`Unknown vehicle option: ${button.dataset.vehicle}`);
+      return;
+    }
+    if (isPassenger) {
+      tileStatus.textContent = 'LEAVE YOUR PASSENGER RIDE BEFORE CHANGING VEHICLES';
+      return;
+    }
+    if (cityWorld.current?.setVehicleType(vehicle.id)) {
+      playerMotion.vehicleType = vehicle.id;
+      localStorage.setItem('kovai-vehicle', vehicle.id);
+      document.querySelectorAll('[data-vehicle]').forEach(option => {
+        option.setAttribute('aria-pressed', String(option === button));
+      });
+      updateTravelMode(playerMotion.vehicle, playerMotion.speed);
+      vehicleDialog.close();
+    }
+  });
 });
 document.querySelector('#recenter').addEventListener('click', () => {
   destination = null;

@@ -86,6 +86,11 @@ button { color: inherit; }
 .city-panel h1 em { font-family: "Playfair Display", serif; font-weight: 600; color: var(--lime); }
 .panel-intro { color: #899186; font-size: 11px; line-height: 1.65; margin: 0 0 18px; max-width: 220px; }
 .neighbourhood-card { display: flex; gap: 11px; align-items: center; min-height: 54px; padding: 10px 12px; border: 1px solid #34412e; background: #192117; border-radius: 3px; }
+.city-story-trigger { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 45px; margin-top: 20px; padding: 7px 10px; border: 1px solid #34412e; border-radius: 4px; color: var(--ink); text-align: left; background: #192117; cursor: pointer; }
+.city-story-trigger > span:nth-child(2) { flex: 1; font-size: 11px; }
+.city-story-trigger small { display: block; margin-top: 3px; color: #818d77; font: 8px "DM Mono", monospace; }
+.city-story-trigger > b { color: var(--lime); font-weight: 400; }
+.city-story-trigger:hover { border-color: #a9c866; }
 .neighbourhood-icon { color: var(--lime); font-size: 20px; }
 .neighbourhood-card small, .neighbourhood-card strong { display: block; }
 .neighbourhood-card small { color: #818d77; font-size: 8px; margin-bottom: 5px; }
@@ -114,6 +119,22 @@ button { color: inherit; }
 .map-tools { position: absolute; top: 18px; right: 17px; display: grid; gap: 5px; }
 .map-tools button { width: 35px; height: 35px; border: 1px solid #ffffff38; border-radius: 3px; color: #fff; background: #172019d9; font-size: 18px; cursor: pointer; }
 .map-tools button:hover { color: var(--lime); border-color: #d4f36a9c; }
+.vehicle-select-button { position: absolute; z-index: 4; top: 139px; right: 17px; min-height: 32px; padding: 0 9px; border: 1px solid #ffffff38; border-radius: 3px; color: var(--lime); background: #172019e8; font: 8px "DM Mono", monospace; cursor: pointer; }
+.vehicle-select-button:hover { border-color: var(--lime); }
+.game-dialog { width: min(420px, calc(100vw - 28px)); max-height: min(80vh, 650px); overflow: auto; padding: 22px; border: 1px solid #647052; border-radius: 8px; color: var(--ink); background: linear-gradient(145deg, #1a241d, #101713); box-shadow: 0 24px 80px #050805b8; }
+.game-dialog::backdrop { background: #070b08b8; backdrop-filter: blur(5px); }
+.dialog-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.dialog-heading small { color: #a3b38c; font: 8px "DM Mono", monospace; letter-spacing: .12em; }
+.dialog-heading h2 { margin: 7px 0 0; font-size: 22px; letter-spacing: -.04em; }
+.dialog-close { width: 30px; height: 30px; border: 1px solid #46513e; border-radius: 4px; color: #dae5d2; background: #202b25; font-size: 20px; cursor: pointer; }
+.game-dialog > p { color: #a9b4a3; font-size: 12px; line-height: 1.6; }
+.story-dialog .neighbourhood-card { margin-top: 18px; }
+.vehicle-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin-top: 17px; }
+.vehicle-option { display: grid; justify-items: start; gap: 5px; min-height: 102px; padding: 11px; border: 1px solid #394638; border-radius: 5px; color: var(--ink); text-align: left; background: #172019; cursor: pointer; }
+.vehicle-option:hover, .vehicle-option[aria-pressed="true"] { border-color: var(--lime); background: #202b25; }
+.vehicle-option > span { font-size: 25px; }
+.vehicle-option strong { font-size: 11px; }
+.vehicle-option small { color: #a5b38f; font: 7px "DM Mono", monospace; letter-spacing: .08em; }
 .destination-card { position: absolute; top: 72px; right: 63px; width: 185px; padding: 12px 30px 11px 13px; background: #151d16ed; border: 1px solid #d4f36a53; border-radius: 3px; }
 .destination-card > span, .destination-card small { display: block; color: #859179; font-size: 8px; }
 .destination-card strong { display: block; color: var(--lime); font: 10px "DM Mono", monospace; margin: 7px 0 5px; }
@@ -223,7 +244,11 @@ button { color: inherit; }
   .game-layout { display: flex; flex-direction: column-reverse; }
   .map-shell { flex: 1; min-height: 0; }
   .city-panel { height: 104px; flex: 0 0 104px; padding: 8px 12px 0; border-right: 0; border-top: 1px solid var(--line); }
-  .panel-kicker, .city-panel h1, .panel-intro, .neighbourhood-card, .panel-bottom { display: none; }
+  .panel-kicker, .city-panel h1, .panel-intro, .panel-bottom { display: none; }
+  .city-story-trigger { min-height: 35px; margin: 0 0 5px; padding: 4px 8px; }
+  .city-story-trigger .neighbourhood-icon { font-size: 15px; }
+  .city-story-trigger > span:nth-child(2) { font-size: 9px; }
+  .city-story-trigger small { font-size: 7px; }
   .places-heading { margin: 0 0 6px; }
   .places-list { display: flex; flex-wrap: nowrap; gap: 7px; overflow-x: auto; overflow-y: hidden; flex: 1; align-items: flex-start; }
   .place-button { display: flex; flex: 0 0 125px; flex-direction: column; align-items: flex-start; gap: 4px; min-height: 54px; padding: 8px; border: 1px solid #303a2e; border-radius: 3px; background: #182018; }
@@ -244,6 +269,7 @@ button { color: inherit; }
   .map-top-left { left: auto; right: 54px; top: 11px; gap: 5px; justify-content: flex-end; max-width: 42%; font-size: 6px; }
   .map-coords { display: none; }
   .map-tools { right: 10px; top: 11px; }
+  .vehicle-select-button { right: 10px; top: 136px; min-height: 28px; padding: 0 7px; font-size: 7px; }
   .touch-pad { position: absolute; right: 10px; bottom: 8px; display: grid; grid-template-columns: repeat(3, 40px); grid-template-rows: repeat(2, 40px); gap: 3px; touch-action: none; }
   .touch-pad button { width: 40px; height: 40px; border: 1px solid #ffffff52; border-radius: 4px; background: #172019d9; color: #f2f3ed; font-size: 16px; touch-action: none; }
   .touch-pad button:first-child { grid-column: 2; }

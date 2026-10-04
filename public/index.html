@@ -7,9 +7,9 @@
     <meta name="description" content="Explore a third-person open-world game through the streets and landmarks of Coimbatore.">
     <title>Kovai Streets — Coimbatore, your way</title>
     <link rel="preconnect" href="https://tile.openstreetmap.org">
-    <link rel="stylesheet" href="/styles.css?v=14">
+    <link rel="stylesheet" href="/styles.css?v=16">
     <script src="/socket.io/socket.io.js" defer></script>
-    <script type="module" src="/game.js?v=33"></script>
+    <script type="module" src="/game.js?v=35"></script>
   </head>
   <body>
     <main id="auth-screen" class="auth-screen">
@@ -49,9 +49,12 @@
       <section class="game-layout">
         <aside class="city-panel">
           <div class="panel-kicker">KOVAI · OPEN WORLD <span>FREE ROAM</span></div>
-          <h1>Your city.<br><em>Your story.</em></h1>
-          <p class="panel-intro">Walk the streets, stop for tea, or catch the town bus.</p>
-          <div class="neighbourhood-card"><span class="neighbourhood-icon">⌖</span><div><small>YOU'RE EXPLORING</small><strong id="current-area">GANDHIPURAM</strong></div></div>
+          <button id="city-story-button" class="city-story-trigger" type="button"><span class="neighbourhood-icon">⌖</span><span>Your city, your story<small>Explore Kovai</small></span><b>↗</b></button>
+          <dialog id="city-story-dialog" class="game-dialog story-dialog" aria-labelledby="city-story-title">
+            <div class="dialog-heading"><div><small>KOVAI · OPEN WORLD</small><h2 id="city-story-title">Your city, your story.</h2></div><button id="close-city-story" class="dialog-close" type="button" aria-label="Close">×</button></div>
+            <p>Walk the streets, stop for tea, or catch the town bus. Every turn is a little more Kovai.</p>
+            <div class="neighbourhood-card"><span class="neighbourhood-icon">⌖</span><div><small>YOU'RE EXPLORING</small><strong id="current-area">COIMBATORE</strong></div></div>
+          </dialog>
           <div class="places-heading"><span>PLACES TO EXPLORE</span><span id="places-count">00 / 51</span></div>
           <div id="places-list" class="places-list"></div>
           <div class="panel-bottom"><span class="weather-icon">✳</span><span id="travel-mode">ON FOOT</span><span class="panel-divider"></span><span id="speed-readout">0 M/S</span><span class="panel-clock">KOVAI TIME <b id="city-time">18:30</b></span></div>
@@ -62,6 +65,7 @@
           <div class="map-wash"></div>
           <div class="map-top-left"><span class="map-live"><i></i> LIVE MAP</span><span class="map-coords" id="map-coords">10.99403° N · 76.96294° E</span></div>
           <div class="map-tools"><button id="zoom-in" aria-label="Zoom in">+</button><button id="zoom-out" aria-label="Zoom out">−</button><button id="recenter" aria-label="Return to Coimbatore Mani Koondu">⌖</button></div>
+          <button id="vehicle-select-button" class="vehicle-select-button" type="button">VEHICLE ▾</button>
           <div id="destination-card" class="destination-card" hidden><span>YOUR NEXT STOP</span><strong id="destination-name"></strong><small id="destination-distance"></small><button id="clear-destination" aria-label="Clear destination">×</button></div>
           <section id="player-actions" class="player-actions" hidden aria-live="polite">
             <strong id="nearby-player-name"></strong>
@@ -106,6 +110,18 @@
           </div>
         </section>
       </section>
+
+      <dialog id="vehicle-dialog" class="game-dialog vehicle-dialog" aria-labelledby="vehicle-dialog-title">
+        <div class="dialog-heading"><div><small>CHOOSE YOUR RIDE</small><h2 id="vehicle-dialog-title">Kovai garage</h2></div><button id="close-vehicle-dialog" class="dialog-close" type="button" aria-label="Close">×</button></div>
+        <p>Pick a vehicle. Your choice is saved and other players can see what you're driving.</p>
+        <div class="vehicle-grid">
+          <button class="vehicle-option" data-vehicle="hatchback" type="button"><span>🚘</span><strong>Hatchback</strong><small>CITY CAR</small></button>
+          <button class="vehicle-option" data-vehicle="auto" type="button"><span>🛺</span><strong>Auto Rickshaw</strong><small>KOVAI AUTO</small></button>
+          <button class="vehicle-option" data-vehicle="jeep" type="button"><span>🚙</span><strong>Jeep</strong><small>OFF-ROAD</small></button>
+          <button class="vehicle-option" data-vehicle="bike" type="button"><span>🏍️</span><strong>Motorcycle</strong><small>TWO WHEELER</small></button>
+          <button class="vehicle-option" data-vehicle="van" type="button"><span>🚐</span><strong>Mini Van</strong><small>FAMILY RIDE</small></button>
+        </div>
+      </dialog>
 
       <footer class="game-controls"><span class="control-key">W</span><span class="control-key">A</span><span class="control-key">S</span><span class="control-key">D</span><span class="control-copy">MOVE / TURN</span><span class="control-separator"></span><span class="control-key">SHIFT</span><span class="control-copy">SPRINT / DRIVE</span><span class="control-separator"></span><span class="control-key">E</span><span class="control-copy">ENTER CAR</span><span class="control-key">SPACE</span><span class="control-copy">JUMP</span><span class="control-hint">Third-person · Coimbatore, Tamil Nadu</span></footer>
     </main>

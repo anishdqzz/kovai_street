@@ -485,37 +485,113 @@ class CityWorld {
   }
 
   makeCar() {
-    this.car = new THREE.Group();
-    const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0xc59a47, roughness: .57, metalness: .14 });
+    this.vehicles = new Map();
+    for (const type of ['hatchback', 'auto', 'jeep', 'bike', 'van']) {
+      const vehicle = this.makeVehicleModel(type);
+      this.vehicles.set(type, vehicle);
+      this.scene.add(vehicle);
+      vehicle.visible = type === 'hatchback';
+    }
+    this.vehicleType = 'hatchback';
+    this.car = this.vehicles.get(this.vehicleType);
+    this.wheels = this.car.userData.wheels;
+    const carPosition = this.localPosition(PLAYER_START.lat, PLAYER_START.lon);
+    this.parkedCarPosition = { x: carPosition.x, y: 0, z: carPosition.z };
+    for (const vehicle of this.vehicles.values()) {
+      vehicle.position.copy(this.parkedCarPosition);
+      vehicle.visible = vehicle === this.car;
+    }
+  }
+
+  makeVehicleModel(type, bodyColor) {
+    const vehicle = new THREE.Group();
+    const colors = { hatchback: 0xc59a47, auto: 0xd6b83f, jeep: 0x54704c, bike: 0xb84d35, van: 0x47869a };
+    const bodyMaterial = new THREE.MeshStandardMaterial({ color: bodyColor ?? colors[type], roughness: .57, metalness: .14 });
     const glassMaterial = new THREE.MeshStandardMaterial({ color: 0x29393a, roughness: .35, metalness: .23 });
     const tireMaterial = new THREE.MeshStandardMaterial({ color: 0x20231f, roughness: .9 });
-    const body = new THREE.Mesh(new THREE.BoxGeometry(2.03, .73, 4.05), bodyMaterial);
-    body.position.y = .78;
-    body.castShadow = true;
-    this.car.add(body);
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(1.65, .78, 2.12), glassMaterial);
-    roof.position.set(0, 1.4, -.22);
-    roof.castShadow = true;
-    this.car.add(roof);
-    const front = new THREE.Mesh(new THREE.BoxGeometry(1.72, .17, .19), new THREE.MeshStandardMaterial({ color: 0xe5d7a8 }));
-    front.position.set(0, .75, -2.08);
-    this.car.add(front);
-    this.wheels = [];
-    for (const x of [-1, 1]) {
-      for (const z of [-1.32, 1.32]) {
-        const wheel = new THREE.Mesh(new THREE.CylinderGeometry(.39, .39, .23, 16), tireMaterial);
-        wheel.rotation.z = Math.PI / 2;
-        wheel.position.set(x, .46, z);
-        wheel.castShadow = true;
-        this.car.add(wheel);
-        this.wheels.push(wheel);
+    const trimMaterial = new THREE.MeshStandardMaterial({ color: 0xe5d7a8, roughness: .65 });
+    const box = (width, height, depth, x, y, z, material) => {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
+      mesh.position.set(x, y, z);
+      mesh.castShadow = true;
+      vehicle.add(mesh);
+      return mesh;
+    };
+    const makeWheel = (x, z, radius = .39) => {
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, .23, 14), tireMaterial);
+      wheel.rotation.z = Math.PI / 2;
+      wheel.position.set(x, radius + .07, z);
+      wheel.castShadow = true;
+      vehicle.add(wheel);
+      return wheel;
+    };
+    const wheels = [];
+    if (type === 'hatchback' || type === 'van') {
+      const width = type === 'van' ? 2.3 : 2.03;
+      box(width, .73, 4.05, 0, .78, 0, bodyMaterial);
+      box(width * .82, type === 'van' ? 1.2 : .78, 2.12, 0, type === 'van' ? 1.58 : 1.4, -.22, glassMaterial);
+      box(width * .84, .17, .19, 0, .75, -2.08, trimMaterial);
+      for (const x of [-width / 2, width / 2]) {
+        for (const z of [-1.32, 1.32]) wheels.push(makeWheel(x, z));
       }
+    } else if (type === 'auto') {
+      box(1.52, .58, 2.35, 0, .78, .12, bodyMaterial);
+      box(1.4, .88, 1.52, 0, 1.48, .48, bodyMaterial);
+      box(1.26, .58, .1, 0, 1.53, -.31, glassMaterial);
+      box(1.62, .15, 1.52, 0, 2.03, .44, trimMaterial);
+      box(.16, 1.05, .16, -.67, 1.47, -.34, bodyMaterial);
+      box(.16, 1.05, .16, .67, 1.47, -.34, bodyMaterial);
+      wheels.push(makeWheel(-.72, .86, .34), makeWheel(.72, .86, .34), makeWheel(0, -1.12, .34));
+    } else if (type === 'jeep') {
+      box(2.28, .82, 3.9, 0, .82, 0, bodyMaterial);
+      box(1.9, .9, 2.15, 0, 1.53, -.08, glassMaterial);
+      for (const x of [-.99, .99]) {
+        box(.12, 1.12, .12, x, 1.48, -.98, bodyMaterial);
+        box(.12, 1.12, .12, x, 1.48, .96, bodyMaterial);
+        for (const z of [-1.35, 1.3]) wheels.push(makeWheel(x * 1.13, z, .47));
+      }
+      box(2.36, .16, 2.65, 0, 2.12, -.02, bodyMaterial);
+      box(1.9, .2, .2, 0, 1.05, -2.02, trimMaterial);
+    } else if (type === 'bike') {
+      wheels.push(makeWheel(0, -1.02, .43), makeWheel(0, 1.02, .43));
+      box(.16, .16, 1.65, 0, .88, 0, trimMaterial);
+      box(.52, .3, .66, 0, 1.1, -.1, bodyMaterial);
+      box(.48, .17, .72, 0, 1.26, .53, glassMaterial);
+      box(.74, .12, .28, 0, 1.42, -.5, bodyMaterial);
+      box(.9, .1, .12, 0, 1.27, -1.1, trimMaterial);
+      box(.48, .13, .3, 0, .7, .82, bodyMaterial);
     }
-    this.scene.add(this.car);
-    const carPosition = this.localPosition(PLAYER_START.lat, PLAYER_START.lon);
-    this.car.position.set(carPosition.x, 0, carPosition.z);
-    this.car.rotation.y = 0;
-    this.parkedCarPosition = { ...this.car.position };
+    vehicle.userData.wheels = wheels;
+    vehicle.userData.type = type;
+    return vehicle;
+  }
+
+  setVehicleType(type) {
+    if (!this.vehicles.has(type) || this.isPassenger) return false;
+    const wasDriving = this.vehicle;
+    const previousCar = this.car;
+    this.vehicleType = type;
+    this.car = this.vehicles.get(type);
+    this.wheels = this.car.userData.wheels;
+    for (const [vehicleType, vehicle] of this.vehicles) vehicle.visible = vehicleType === type;
+    if (wasDriving) {
+      this.car.position.copy(previousCar.position);
+      this.car.rotation.copy(previousCar.rotation);
+      this.car.visible = true;
+      previousCar.visible = false;
+    } else {
+      this.parkedCarPosition = { ...this.worldPosition, y: 0 };
+      for (const vehicle of this.vehicles.values()) {
+        vehicle.position.copy(this.parkedCarPosition);
+        vehicle.rotation.y = -this.heading;
+      }
+      this.car.visible = true;
+    }
+    this.onStatus(`${type.toUpperCase()} SELECTED`);
+    this.onPosition(this.position, {
+      heading: this.heading, vehicle: this.vehicle, speed: this.speed, vehicleType: this.vehicleType
+    });
+    return true;
   }
 
   makeStreetLife() {
@@ -1266,27 +1342,57 @@ class CityWorld {
     let other = this.players.get(player.id);
     if (other) return other;
     other = new THREE.Group();
+    const avatar = new THREE.Group();
     const body = new THREE.Mesh(
       new THREE.BoxGeometry(.68, 1.22, .4),
       new THREE.MeshStandardMaterial({ color: 0x71c9ee, roughness: .78 })
     );
     body.position.y = 1.18;
     body.castShadow = true;
-    other.add(body);
+    avatar.add(body);
     const head = new THREE.Mesh(
       new THREE.SphereGeometry(.24, 12, 10),
       new THREE.MeshStandardMaterial({ color: 0xc1845d, roughness: .9 })
     );
     head.position.y = 1.96;
     head.castShadow = true;
-    other.add(head);
+    avatar.add(head);
     const label = makeNameSprite(player.name, '#8bd6ff');
     label.position.y = 2.55;
-    other.add(label);
+    avatar.add(label);
+    other.add(avatar);
+    other.userData.avatar = avatar;
     other.userData.playerName = player.name;
     this.players.set(player.id, other);
     this.scene.add(other);
     return other;
+  }
+
+  updateOtherPlayer(player) {
+    const model = this.makeOtherPlayer(player);
+    const vehicleType = this.vehicles.has(player.vehicleType) ? player.vehicleType : 'hatchback';
+    if (model.userData.vehicleType !== vehicleType) {
+      if (model.userData.vehicleModel) {
+        model.remove(model.userData.vehicleModel);
+        model.userData.vehicleModel.traverse(object => {
+          object.geometry?.dispose();
+          object.material?.dispose();
+        });
+      }
+      model.userData.vehicleModel = this.makeVehicleModel(vehicleType, 0x4f9ab2);
+      model.userData.vehicleType = vehicleType;
+      model.add(model.userData.vehicleModel);
+    }
+    const driving = player.vehicle && !player.passenger;
+    model.userData.avatar.visible = !player.passenger && !driving;
+    model.userData.vehicleModel.visible = driving;
+    const position = this.localPosition(player.lat, player.lon);
+    model.position.set(position.x, this.getFlyoverHeight(position.x, position.z), position.z);
+    model.rotation.y = Number.isFinite(player.heading) ? -player.heading : 0;
+    for (const wheel of model.userData.vehicleModel.userData.wheels) {
+      wheel.rotation.x += (Number.isFinite(player.speed) ? player.speed : 0) * .015;
+    }
+    return model;
   }
 
   updatePlayers(players) {
@@ -1302,11 +1408,7 @@ class CityWorld {
       this.players.delete(id);
     }
     for (const player of players) {
-      const model = this.makeOtherPlayer(player);
-      const position = this.localPosition(player.lat, player.lon);
-      model.position.set(position.x, this.getFlyoverHeight(position.x, position.z), position.z);
-      model.rotation.y = Number.isFinite(player.heading) ? -player.heading : 0;
-      model.visible = !player.passenger;
+      this.updateOtherPlayer(player);
     }
   }
 
@@ -1692,11 +1794,7 @@ class CityWorld {
   }
 
   setPlayer(player) {
-    const position = this.localPosition(player.lat, player.lon);
-    const model = this.makeOtherPlayer(player);
-    model.position.set(position.x, this.getFlyoverHeight(position.x, position.z), position.z);
-    model.rotation.y = Number.isFinite(player.heading) ? -player.heading : 0;
-    model.visible = !player.passenger;
+    this.updateOtherPlayer(player);
   }
 
   setTarget(place) {
@@ -2016,7 +2114,7 @@ class CityWorld {
     this.player.position.y = this.getFlyoverHeight(this.worldPosition.x, this.worldPosition.z) + this.playerHeight;
     this.player.rotation.y = -this.heading;
     this.updateTiles();
-    this.onPosition(this.position, { heading: this.heading, vehicle: this.vehicle, speed: this.speed });
+    this.onPosition(this.position, { heading: this.heading, vehicle: this.vehicle, speed: this.speed, vehicleType: this.vehicleType });
   }
 
   setPassengerMode(driver) {
@@ -2027,6 +2125,7 @@ class CityWorld {
       this.player.visible = true;
       return;
     }
+    if (driver.vehicleType && this.vehicles.has(driver.vehicleType)) this.setVehicleType(driver.vehicleType);
     this.isPassenger = true;
     this.vehicle = true;
     this.player.visible = false;
@@ -2068,7 +2167,12 @@ class CityWorld {
     this.speed = 0;
     this.vehicle = false;
     this.player.visible = true;
-    this.car.position.copy(this.parkedCarPosition);
+    const spawn = this.localPosition(PLAYER_START.lat, PLAYER_START.lon);
+    this.parkedCarPosition = { x: spawn.x, y: 0, z: spawn.z };
+    for (const [type, vehicle] of this.vehicles) {
+      vehicle.position.copy(this.parkedCarPosition);
+      vehicle.visible = type === this.vehicleType;
+    }
     this.setPosition(PLAYER_START);
   }
 
@@ -2083,7 +2187,9 @@ class CityWorld {
       this.player.visible = true;
       this.vehicle = false;
       this.speed = 0;
-      this.onPosition(this.position, { heading: this.heading, vehicle: false, speed: 0 });
+      this.car.visible = true;
+      this.parkedCarPosition = { ...this.worldPosition, y: 0 };
+      this.onPosition(this.position, { heading: this.heading, vehicle: false, speed: 0, vehicleType: this.vehicleType });
       this.onStatus('ON FOOT · PRESS E NEAR YOUR CAR TO DRIVE');
       this.onMode(false, 0);
       return;
@@ -2098,6 +2204,7 @@ class CityWorld {
     }
     this.vehicle = true;
     this.heading = -this.car.rotation.y;
+    this.car.visible = true;
     this.player.visible = false;
     this.speed = 0;
     this.onStatus('DRIVING · SHIFT TO ACCELERATE');
@@ -2200,7 +2307,9 @@ class CityWorld {
       return;
     }
     this.updateTiles();
-    this.onPosition(this.position, { heading: this.heading, vehicle: this.vehicle, speed: this.speed });
+    this.onPosition(this.position, {
+      heading: this.heading, vehicle: this.vehicle, speed: this.speed, vehicleType: this.vehicleType
+    });
     this.onMode(this.vehicle, this.speed);
   }
 

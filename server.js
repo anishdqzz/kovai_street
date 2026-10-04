@@ -417,6 +417,7 @@ io.on('connection', socket => {
     lon: PLAYER_START.lon,
     heading: 0,
     vehicle: false,
+    vehicleType: 'hatchback',
     speed: 0,
     passengerId: null,
     rideDriverId: null
@@ -446,6 +447,9 @@ io.on('connection', socket => {
     player.lon = position.lon;
     if (Number.isFinite(position.heading)) player.heading = Math.atan2(Math.sin(position.heading), Math.cos(position.heading));
     if (typeof position.vehicle === 'boolean') player.vehicle = position.vehicle;
+    if (['hatchback', 'auto', 'jeep', 'bike', 'van'].includes(position.vehicleType)) {
+      player.vehicleType = position.vehicleType;
+    }
     if (Number.isFinite(position.speed)) player.speed = Math.max(-8, Math.min(30, position.speed));
     io.emit('players:update', player);
     if (player.passengerId) {
@@ -455,6 +459,7 @@ io.on('connection', socket => {
         passenger.lon = player.lon;
         passenger.heading = player.heading;
         passenger.vehicle = true;
+        passenger.vehicleType = player.vehicleType;
         passenger.passenger = true;
         io.emit('players:update', passenger);
       } else if (passenger) {
@@ -592,6 +597,7 @@ io.on('connection', socket => {
     rider.lon = driver.lon;
     rider.heading = driver.heading;
     rider.vehicle = true;
+    rider.vehicleType = driver.vehicleType;
     rider.passenger = true;
     io.emit('players:update', driver);
     io.emit('players:update', rider);
