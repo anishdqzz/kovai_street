@@ -19,6 +19,18 @@ Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, and
 
 Password reset uses one-time links that expire after one hour. Without SMTP configured, sign-in and signup continue to work, but password-reset requests return a configuration error.
 
+## Deploy with Render
+
+Vercel's serverless functions do not keep the Socket.IO server running for live multiplayer. Use a persistent Node.js web service instead. This repository includes a `render.yaml` Blueprint for Render:
+
+1. In MongoDB Atlas, create a new database user and ensure the cluster is running. Allow the Render service to connect through Atlas Network Access; prefer the hosting provider's outbound IPs when available.
+2. In Render, choose **New → Blueprint**, connect the `anishdqzz/kovai_street` GitHub repository, and deploy the `render.yaml` service.
+3. In the Render service's environment settings, set `MONGODB_URI` to the new Atlas connection URI, including your intended database name. Render generates `JWT_SECRET`; keep it private. `APP_ORIGIN` can be left unset because the server uses Render's external URL.
+4. Redeploy, then open the Render URL and test signup/sign-in and live players from two browsers.
+5. Share the Render URL with friends. They must all use this same URL to join the same live game.
+
+Do not commit `.env` or paste database credentials into GitHub, chat, or screenshots. If a database credential was ever committed to a public repository, rotate that database user's password in Atlas immediately and update the hosting secret.
+
 ## Map attribution
 
 Map tiles are provided by [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors. An internet connection is needed to load the street map.

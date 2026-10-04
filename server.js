@@ -50,7 +50,9 @@ async function findAvailablePort() {
 }
 
 const port = requestedPort || await findAvailablePort();
-const appOrigin = new URL(process.env.APP_ORIGIN || `http://localhost:${port}`).origin;
+const appOrigin = new URL(
+  process.env.APP_ORIGIN || process.env.RENDER_EXTERNAL_URL || `http://localhost:${port}`
+).origin;
 const root = path.dirname(fileURLToPath(import.meta.url));
 
 if (!jwtSecret || jwtSecret.length < 32) {
